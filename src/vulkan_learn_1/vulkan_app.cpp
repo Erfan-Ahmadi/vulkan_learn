@@ -57,7 +57,7 @@ bool VulkanApp::create_instance()
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	app_info.pApplicationName = "vk-1";
 	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.pEngineName = "Mir Engine®";
+	app_info.pEngineName = "Mir Engineï¿½";
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.apiVersion = VK_API_VERSION_1_0;
 
@@ -107,11 +107,11 @@ bool VulkanApp::create_instance()
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.pApplicationInfo = &app_info;
 	create_info.enabledExtensionCount = glfw_extensions_count;
-	create_info.ppEnabledLayerNames = glfw_extensions;
+	create_info.ppEnabledExtensionNames = glfw_extensions;
 	// Validation layer 
 	create_info.enabledLayerCount = 0;
 
-	VkResult result = vkCreateInstance(&create_info, nullptr, &this->instance);
+	VkResult result = vkCreateInstance(&create_info, nullptr, &(this->instance));
 
 	return result == VK_SUCCESS;
 }
