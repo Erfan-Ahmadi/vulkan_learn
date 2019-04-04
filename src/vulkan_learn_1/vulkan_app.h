@@ -17,11 +17,21 @@ public:
 	bool run();
 
 	bool setup_window();
+
 	bool setup_vulkan();
+	bool create_instance();
+
 	bool main_loop();
+
 	bool release();
 
 private:
+
+	//	Vulkan
+	VkInstance instance;
+
+	//	Window
 	GLFWwindow* window;
+
 	bool is_released;
 };
