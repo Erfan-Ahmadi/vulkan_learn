@@ -1,4 +1,5 @@
 #include "vulkan_app.h"
+#include <vector>
 
 constexpr int WIDTH = 800;
 constexpr int HEIGHT = 600;
@@ -60,19 +61,53 @@ bool VulkanApp::create_instance()
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.apiVersion = VK_API_VERSION_1_0;
 
+	// check available extentions
+	uint32_t available_extention_count = 0;
+	vkEnumerateInstanceExtensionProperties(nullptr, &available_extention_count, nullptr);
+	std::vector<VkExtensionProperties> available_extensions(available_extention_count);
+	vkEnumerateInstanceExtensionProperties(nullptr, &available_extention_count, available_extensions.data());
+
+	Log("available extensions" << "(" << available_extention_count << ") : ");
+
+	for (const auto& extension : available_extensions) {
+		Log("\t" << extension.extensionName);
+	}
 
 	// Ok Let's Do It :(
-	uint32_t glfw_extentions_count = 0;
-	const char** glfw_extentions;
+	uint32_t glfw_extensions_count = 0;
+	const char** glfw_extensions;
 
-	// Probably : VK_KHR_Surface(?) and VkSwapchainKHR(vsync)
-	glfw_extentions = glfwGetRequiredInstanceExtensions(&glfw_extentions_count);
+	glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
+
+	// check if extentions required by glfw is available
+	if (glfw_extensions_count > available_extention_count)
+	{
+		Log("Extentions for glfw are not available");
+		return false;
+	}
+
+	for (auto i = 0; i < glfw_extensions_count; ++i)
+	{
+		bool found_extention = false;
+
+		for (const auto& extension : available_extensions) 
+		{
+			if (extension.extensionName == std::string(glfw_extensions[i]))
+				found_extention = true;
+		}
+
+		if (!found_extention)
+		{
+			Log("Extention << " << glfw_extensions[i] << " >> for glfw is not available");
+			return false;
+		}
+	}
 
 	VkInstanceCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.pApplicationInfo = &app_info;
-	create_info.enabledExtensionCount = glfw_extentions_count;
-	create_info.ppEnabledLayerNames = glfw_extentions;
+	create_info.enabledExtensionCount = glfw_extensions_count;
+	create_info.ppEnabledLayerNames = glfw_extensions;
 	// Validation layer 
 	create_info.enabledLayerCount = 0;
 
@@ -83,7 +118,7 @@ bool VulkanApp::create_instance()
 
 bool VulkanApp::main_loop()
 {
-	while (!glfwWindowShouldClose(window))
+	while (!glfwWindowShouldClose(this->window))
 	{
 		glfwPollEvents();
 	}
@@ -96,7 +131,9 @@ bool VulkanApp::release()
 	if (is_released)
 		return true;
 
-	glfwDestroyWindow(window);
+	vkDestroyInstance(this->instance, nullptr);
+
+	glfwDestroyWindow(this->window);
 	glfwTerminate();
 
 	is_released = true;

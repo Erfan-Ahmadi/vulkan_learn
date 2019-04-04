@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
+#define Log(str) std::cout << str << std::endl
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
