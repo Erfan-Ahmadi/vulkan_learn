@@ -87,6 +87,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_swap_chain())
 		return false;
+	if (!create_image_views())
+		return false;
 
 	return true;
 }
@@ -321,6 +323,21 @@ QueueFamilyIndices VulkanApp::find_queue_family_indices(VkPhysicalDevice device)
 	return indices;
 }
 
+bool VulkanApp::check_device_extensions_support()
+{
+	uint32_t available_extensions_count;
+	vkEnumerateDeviceExtensionProperties(this->physical_device, nullptr, &available_extensions_count, nullptr);
+	std::vector<VkExtensionProperties> available_extensions(available_extensions_count);
+	vkEnumerateDeviceExtensionProperties(this->physical_device, nullptr, &available_extensions_count, available_extensions.data());
+
+	std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
+
+	for (auto& extension : available_extensions)
+		required_extensions.erase(extension.extensionName);
+
+	return required_extensions.empty();
+}
+
 bool VulkanApp::create_logical_device()
 {
 	if (!check_device_extensions_support())
@@ -508,19 +525,32 @@ bool VulkanApp::create_swap_chain()
 	return true;
 }
 
-bool VulkanApp::check_device_extensions_support()
+bool VulkanApp::create_image_views()
 {
-	uint32_t available_extensions_count;
-	vkEnumerateDeviceExtensionProperties(this->physical_device, nullptr, &available_extensions_count, nullptr);
-	std::vector<VkExtensionProperties> available_extensions(available_extensions_count);
-	vkEnumerateDeviceExtensionProperties(this->physical_device, nullptr, &available_extensions_count, available_extensions.data());
+	this->swap_chain_image_views.resize(this->swap_chain_images.size());
 
-	std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
+	for (auto i = 0; i < this->swap_chain_image_views.size(); ++i)
+	{
+		VkImageViewCreateInfo create_info = {};
+		create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		create_info.format = this->swap_chain_image_format;
+		create_info.image = this->swap_chain_images[i];
+		create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		create_info.subresourceRange.baseArrayLayer = 0;
+		create_info.subresourceRange.baseMipLevel = 0;
+		create_info.subresourceRange.levelCount = 1;
+		create_info.subresourceRange.layerCount = 1;
 
-	for (auto& extension : available_extensions)
-		required_extensions.erase(extension.extensionName);
+		if (vkCreateImageView(this->device, &create_info, nullptr, &this->swap_chain_image_views[i]) != VK_SUCCESS)
+			return false;
+	}
 
-	return required_extensions.empty();
+	return true;
 }
 
 bool VulkanApp::main_loop()
@@ -544,6 +574,9 @@ bool VulkanApp::release()
 	{
 		DestroyDebugUtilsMessengerEXT(this->instance, this->debug_messenger, nullptr);
 	}
+
+	for (auto& image_view : this->swap_chain_image_views)
+		vkDestroyImageView(this->device, image_view, nullptr);
 
 	vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);

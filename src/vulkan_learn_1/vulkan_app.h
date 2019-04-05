@@ -57,6 +57,7 @@ private:
 	bool create_logical_device();
 	bool create_surface();
 	bool create_swap_chain();
+	bool create_image_views();
 
 	bool main_loop();
 
