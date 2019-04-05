@@ -79,6 +79,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!set_up_debug_messenger())
 		return false;
+	if (!create_surface())
+		return false;
 	if (!pick_physical_device())
 		return false;
 	if (!create_logical_device())
@@ -307,7 +309,7 @@ QueueFamilyIndices VulkanApp::find_queue_family_indices(VkPhysicalDevice device)
 		}
 
 		VkBool32 present_support = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(this->physical_device, i, surface, &present_support);
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
 
 		if (queue_familiy.queueCount > 0 && present_support)
 			indices.present_family = i;
