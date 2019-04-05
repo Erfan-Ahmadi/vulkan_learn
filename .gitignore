@@ -33,3 +33,5 @@
 *.pdb
 *.idb
 *.suo
+*.ipch
+*.enc
