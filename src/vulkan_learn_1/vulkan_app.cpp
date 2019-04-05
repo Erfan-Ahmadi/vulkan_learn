@@ -241,6 +241,21 @@ bool VulkanApp::pick_physical_device()
 	std::vector<VkPhysicalDevice> available_physical_devices(available_physical_devices_count);
 	vkEnumeratePhysicalDevices(this->instance, &available_physical_devices_count, available_physical_devices.data());
 
+	auto selected_device = 0;
+
+	for (auto i = 0; i < available_physical_devices_count; ++i)
+	{
+		const auto device = available_physical_devices[i];
+		VkPhysicalDeviceProperties device_properties;
+		VkPhysicalDeviceFeatures device_features;
+		vkGetPhysicalDeviceProperties(device, &device_properties);
+		vkGetPhysicalDeviceFeatures(device, &device_features);
+
+		//I just skip here since i only have Intel's GPU on Surface Pro 6 
+	}
+
+	this->physical_device = available_physical_devices[selected_device];
+
 	return true;
 }
 
