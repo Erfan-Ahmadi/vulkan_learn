@@ -25,6 +25,10 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\vulkan_learn_1\vulkan_app.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\vulkan_learn_1\shaders\shaders.frag" />
+    <None Include="..\..\..\src\vulkan_learn_1\shaders\shaders.vert" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{C9DC3BB7-DCED-4102-8554-85F7CAFED26C}</ProjectGuid>

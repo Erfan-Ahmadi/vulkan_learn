@@ -553,6 +553,11 @@ bool VulkanApp::create_image_views()
 	return true;
 }
 
+bool VulkanApp::create_graphics_pipeline()
+{
+	return true;
+}
+
 bool VulkanApp::main_loop()
 {
 	while (!glfwWindowShouldClose(this->window))

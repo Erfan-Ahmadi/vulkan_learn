@@ -58,6 +58,7 @@ private:
 	bool create_surface();
 	bool create_swap_chain();
 	bool create_image_views();
+	bool create_graphics_pipeline();
 
 	bool main_loop();
 
