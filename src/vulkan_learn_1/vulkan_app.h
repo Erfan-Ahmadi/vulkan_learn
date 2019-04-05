@@ -3,18 +3,33 @@
 #include <functional>
 #include <cstdlib>
 #include <optional>
+
+#ifdef _WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#define NOMINMAX
+#endif
+
 #include <vulkan/vulkan.h>
 
-#define Log(str) std::cout << str << std::endl
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#define Log(str) std::cout << str << std::endl
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphics_family;
+	std::optional<uint32_t> present_family;
 
 	bool is_complete() {
-		return graphics_family.has_value();
+		return graphics_family.has_value() && present_family.has_value();
 	}
+};
+
+struct SwapChainSupportDetails
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> present_modes;
 };
 
 class VulkanApp
@@ -39,6 +54,10 @@ private:
 	QueueFamilyIndices find_queue_family_indices(VkPhysicalDevice device);
 
 	bool create_logical_device();
+	bool create_surface();
+	bool create_swap_chain();
+
+	bool check_device_extentions_support();
 
 	bool main_loop();
 
@@ -46,6 +65,17 @@ private:
 	VkInstance instance;
 	VkPhysicalDevice physical_device;
 	VkDevice  device;
+	VkSurfaceKHR surface;
+	QueueFamilyIndices indices;
+
+	VkQueue graphics_queue;
+	VkQueue present_queue;
+
+	VkSwapchainKHR swap_chain;
+	std::vector<VkImage> swap_chain_images;
+	VkFormat swap_chain_image_format;
+	VkExtent2D swap_chain_extent;
+
 	bool validation_layers_enabled;
 
 #ifdef _DEBUG
