@@ -59,6 +59,7 @@ private:
 	bool create_swap_chain();
 	bool create_image_views();
 	bool create_graphics_pipeline();
+	VkShaderModule create_shader_module(const std::vector<char>& code);
 
 	bool main_loop();
 

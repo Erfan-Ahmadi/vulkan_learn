@@ -33,7 +33,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 	return VK_FALSE;
 }
 
-static std::vector<char> readFile(const std::string& fileName)
+static std::vector<char> read_file(const std::string& fileName)
 {
 	std::ifstream file(fileName, std::ios::ate | std::ios::binary);
 	std::vector<char> buffer;
@@ -577,10 +577,45 @@ bool VulkanApp::create_image_views()
 
 bool VulkanApp::create_graphics_pipeline()
 {
-	auto vert_shader = readFile("vert.spv");
-	auto frag_shader = readFile("frag.spv");
+	auto vert_shader = read_file("vert.spv");
+	auto frag_shader = read_file("frag.spv");
+
+	VkShaderModule vert_shader_module = create_shader_module(vert_shader);
+	VkShaderModule frag_shader_module = create_shader_module(frag_shader);
+
+	auto shader_stages = (VkPipelineShaderStageCreateInfo*)malloc(2 * sizeof(VkPipelineShaderStageCreateInfo));
+
+	shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+	shader_stages[0].module = vert_shader_module;
+	shader_stages[0].pName = "main";
+
+	VkPipelineShaderStageCreateInfo frag_shader_stage_info = {};
+	shader_stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shader_stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	shader_stages[1].module = frag_shader_module;
+	shader_stages[1].pName = "main";
+
+	free(shader_stages);
+	vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
+	vkDestroyShaderModule(this->device, frag_shader_module, nullptr);
 
 	return true;
+}
+
+VkShaderModule VulkanApp::create_shader_module(const std::vector<char>& code)
+{
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.codeSize = code.size();
+	create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+	VkShaderModule shader_module;
+
+	if (vkCreateShaderModule(this->device, &create_info, nullptr, &shader_module) != VK_SUCCESS)
+		Log("Shader Coudn't be created");
+
+	return shader_module;
 }
 
 bool VulkanApp::main_loop()
