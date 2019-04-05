@@ -4,6 +4,11 @@
 constexpr int WIDTH = 800;
 constexpr int HEIGHT = 600;
 
+const std::vector<const char*> required_validation_layers =
+{
+	"VK_LAYER_LUNARG_standard_validation"
+};
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -64,6 +69,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!pick_physical_device())
 		return false;
+	if (!create_logical_device())
+		return false;
 
 	return true;
 }
@@ -85,11 +92,6 @@ bool VulkanApp::create_instance()
 	vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr);
 	std::vector<VkLayerProperties> available_layers(available_layer_count);
 	vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data());
-
-	const std::vector<const char*> required_validation_layers =
-	{
-		"VK_LAYER_LUNARG_standard_validation"
-	};
 
 	// check if extentions required by glfw is available
 	if (required_validation_layers.size() > available_layer_count)
@@ -241,7 +243,7 @@ bool VulkanApp::pick_physical_device()
 	std::vector<VkPhysicalDevice> available_physical_devices(available_physical_devices_count);
 	vkEnumeratePhysicalDevices(this->instance, &available_physical_devices_count, available_physical_devices.data());
 
-	auto selected_device = 0;
+	auto selected_device = -1;
 
 	for (auto i = 0; i < available_physical_devices_count; ++i)
 	{
@@ -252,6 +254,17 @@ bool VulkanApp::pick_physical_device()
 		vkGetPhysicalDeviceFeatures(device, &device_features);
 
 		//I just skip here since i only have Intel's GPU on Surface Pro 6 
+		if (find_queue_family_indices(device).is_complete())
+		{
+			selected_device = i;
+			break;
+		}
+	}
+
+	if (selected_device < 0)
+	{
+		Log("No Suitable Physical Device Found.");
+		return false;
 	}
 
 	this->physical_device = available_physical_devices[selected_device];
@@ -285,6 +298,43 @@ QueueFamilyIndices VulkanApp::find_queue_family_indices(VkPhysicalDevice device)
 	return indices;
 }
 
+bool VulkanApp::create_logical_device()
+{
+	auto indices = find_queue_family_indices(this->physical_device);
+
+	float queue_priorities[1] = { 1.0f };
+
+	VkDeviceQueueCreateInfo  queue_create_info = {};
+	queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queue_create_info.queueCount = 1;
+	queue_create_info.queueFamilyIndex = indices.graphics_family.value(); 
+	queue_create_info.pQueuePriorities = queue_priorities;
+
+	// nothing for now
+	VkPhysicalDeviceFeatures device_features = {};
+
+	VkDeviceCreateInfo  create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	create_info.queueCreateInfoCount = 1;
+	create_info.pQueueCreateInfos = &queue_create_info;
+	create_info.pEnabledFeatures = &device_features;
+	create_info.enabledExtensionCount = 0;	
+	
+	if (validation_layers_enabled)
+	{
+		create_info.enabledLayerCount = static_cast<uint32_t>(required_validation_layers.size());
+		create_info.ppEnabledLayerNames = required_validation_layers.data();
+	}
+	else
+	{
+		create_info.enabledLayerCount = 0;
+	}
+
+	auto result = vkCreateDevice(this->physical_device, &create_info, nullptr, &this->device);
+
+	return result == VK_SUCCESS;
+}
+
 bool VulkanApp::main_loop()
 {
 	while (!glfwWindowShouldClose(this->window))
@@ -308,6 +358,7 @@ bool VulkanApp::release()
 	}
 
 	vkDestroyInstance(this->instance, nullptr);
+	vkDestroyDevice(this->device, nullptr);
 
 	glfwDestroyWindow(this->window);
 	glfwTerminate();

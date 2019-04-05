@@ -38,11 +38,14 @@ private:
 	bool pick_physical_device();
 	QueueFamilyIndices find_queue_family_indices(VkPhysicalDevice device);
 
+	bool create_logical_device();
+
 	bool main_loop();
 
 	//	Vulkan
 	VkInstance instance;
 	VkPhysicalDevice physical_device;
+	VkDevice  device;
 	bool validation_layers_enabled;
 
 #ifdef _DEBUG
