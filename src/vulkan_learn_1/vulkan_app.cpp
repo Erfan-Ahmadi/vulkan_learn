@@ -583,6 +583,10 @@ bool VulkanApp::create_graphics_pipeline()
 	VkShaderModule vert_shader_module = create_shader_module(vert_shader);
 	VkShaderModule frag_shader_module = create_shader_module(frag_shader);
 
+	// TODO: READ LATER (I am SLEEPY and most of it was copy paste because i'm lazy)
+
+	// Shaders
+
 	auto shader_stages = (VkPipelineShaderStageCreateInfo*)malloc(2 * sizeof(VkPipelineShaderStageCreateInfo));
 
 	shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -595,6 +599,91 @@ bool VulkanApp::create_graphics_pipeline()
 	shader_stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	shader_stages[1].module = frag_shader_module;
 	shader_stages[1].pName = "main";
+
+
+	// Pipeline Fixed Funtions
+
+	// VI
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+
+	// IA
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	// VS
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)this->swap_chain_extent.width;
+	viewport.height = (float)this->swap_chain_extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = this->swap_chain_extent;
+
+	VkPipelineViewportStateCreateInfo viewportState = {};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &scissor;
+
+	// RS
+	VkPipelineRasterizationStateCreateInfo rasterizer = {};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE;
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.lineWidth = 1.0f;
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE;
+	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+	rasterizer.depthBiasClamp = 0.0f; // Optional
+	rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+
+	// MS
+	VkPipelineMultisampleStateCreateInfo multisampling = {};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f; // Optional
+	multisampling.pSampleMask = nullptr; // Optional
+	multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+	multisampling.alphaToOneEnable = VK_FALSE; // Optional
+
+	// CB
+	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+
+	VkPipelineColorBlendStateCreateInfo colorBlending = {};
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+
+	// Pipeline Layout
+
+	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipeline_layout_info.setLayoutCount = 0;
+	pipeline_layout_info.pSetLayouts = nullptr;
+	pipeline_layout_info.pushConstantRangeCount = 0;
+	pipeline_layout_info.pPushConstantRanges = nullptr;
+
+	// TODO: not return false
+	if (vkCreatePipelineLayout(this->device, &pipeline_layout_info, nullptr, this->pipeline_layout) != VK_SUCCESS)
+		return false;
 
 	free(shader_stages);
 	vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
@@ -644,13 +733,21 @@ bool VulkanApp::release()
 		vkDestroyImageView(this->device, image_view, nullptr);
 
 	if (this->device)
+	{
+		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 		vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
 
-	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
-	vkDestroyInstance(this->instance, nullptr);
-
-	if (this->device)
+		// Destroy Device
 		vkDestroyDevice(this->device, nullptr);
+	}
+
+	if (this->instance)
+	{
+		vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
+
+		// Destroy Instance
+		vkDestroyInstance(this->instance, nullptr);
+	}
 
 	glfwDestroyWindow(this->window);
 	glfwTerminate();

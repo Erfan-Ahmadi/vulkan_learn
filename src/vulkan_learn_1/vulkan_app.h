@@ -79,6 +79,8 @@ private:
 	VkFormat swap_chain_image_format;
 	VkExtent2D swap_chain_extent;
 
+	VkPipelineLayout pipeline_layout;
+
 	bool validation_layers_enabled;
 
 #ifdef _DEBUG
