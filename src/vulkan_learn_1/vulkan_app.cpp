@@ -244,6 +244,32 @@ bool VulkanApp::pick_physical_device()
 	return true;
 }
 
+QueueFamilyIndices VulkanApp::find_queue_family_indices(VkPhysicalDevice device)
+{
+	QueueFamilyIndices indices;
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queue_families(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queue_families.data());
+
+	for (auto i = 0; i < queue_families.size(); ++i)
+	{
+		const auto& queue_familiy = queue_families[i];
+
+		if (queue_familiy.queueCount > 0 && (queue_familiy.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+		{
+			indices.graphics_family = i;
+		}
+
+		if (indices.is_complete())
+			break;
+	}
+
+	return indices;
+}
+
 bool VulkanApp::main_loop()
 {
 	while (!glfwWindowShouldClose(this->window))

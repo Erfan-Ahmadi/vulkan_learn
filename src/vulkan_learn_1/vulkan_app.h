@@ -2,12 +2,20 @@
 #include <stdexcept>
 #include <functional>
 #include <cstdlib>
-
+#include <optional>
 #include <vulkan/vulkan.h>
 
 #define Log(str) std::cout << str << std::endl
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+struct QueueFamilyIndices {
+	std::optional<uint32_t> graphics_family;
+
+	bool is_complete() {
+		return graphics_family.has_value();
+	}
+};
 
 class VulkanApp
 {
@@ -28,6 +36,7 @@ private:
 	bool create_instance();
 	bool set_up_debug_messenger();
 	bool pick_physical_device();
+	QueueFamilyIndices find_queue_family_indices(VkPhysicalDevice device);
 
 	bool main_loop();
 
