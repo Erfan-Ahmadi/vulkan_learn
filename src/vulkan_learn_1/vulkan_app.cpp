@@ -323,7 +323,7 @@ QueueFamilyIndices VulkanApp::find_queue_family_indices(VkPhysicalDevice device)
 
 bool VulkanApp::create_logical_device()
 {
-	if (!check_device_extentions_support())
+	if (!check_device_extensions_support())
 		return false;
 
 	this->indices = find_queue_family_indices(this->physical_device);
@@ -495,19 +495,20 @@ bool VulkanApp::create_swap_chain()
 	create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	create_info.clipped = VK_TRUE;
 	create_info.oldSwapchain = VK_NULL_HANDLE;
+	create_info.surface = this->surface;
 
 	if (vkCreateSwapchainKHR(this->device, &create_info, nullptr, &this->swap_chain) != VK_SUCCESS)
 		return false;
 
 	uint32_t images_count;
-	vkGetSwapchainImagesKHR(device, this->swap_chain, &images_count, nullptr);
+	vkGetSwapchainImagesKHR(this->device, this->swap_chain, &images_count, nullptr);
 	this->swap_chain_images.resize(images_count);
-	vkGetSwapchainImagesKHR(device, this->swap_chain, &images_count, this->swap_chain_images.data());
+	vkGetSwapchainImagesKHR(this->device, this->swap_chain, &images_count, this->swap_chain_images.data());
 
 	return true;
 }
 
-bool VulkanApp::check_device_extentions_support()
+bool VulkanApp::check_device_extensions_support()
 {
 	uint32_t available_extensions_count;
 	vkEnumerateDeviceExtensionProperties(this->physical_device, nullptr, &available_extensions_count, nullptr);

@@ -53,11 +53,10 @@ private:
 	bool pick_physical_device();
 	QueueFamilyIndices find_queue_family_indices(VkPhysicalDevice device);
 
+	bool check_device_extensions_support();
 	bool create_logical_device();
 	bool create_surface();
 	bool create_swap_chain();
-
-	bool check_device_extentions_support();
 
 	bool main_loop();
 
@@ -73,6 +72,7 @@ private:
 
 	VkSwapchainKHR swap_chain;
 	std::vector<VkImage> swap_chain_images;
+	std::vector<VkImageView> swap_chain_image_views;
 	VkFormat swap_chain_image_format;
 	VkExtent2D swap_chain_extent;
 
