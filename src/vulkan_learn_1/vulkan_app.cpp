@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <optional>
 #include <set>
+#include <fstream>
 
 constexpr int WIDTH = 800;
 constexpr int HEIGHT = 600;
@@ -30,6 +31,25 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
 	return VK_FALSE;
+}
+
+static std::vector<char> readFile(const std::string& fileName)
+{
+	std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+	std::vector<char> buffer;
+
+	if (!file.is_open())
+		return buffer;
+
+	size_t fileSize = (size_t)file.tellg();
+	buffer.resize(fileSize);
+
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+
+	file.close();
+
+	return buffer;
 }
 
 VulkanApp::VulkanApp() :
@@ -88,6 +108,8 @@ bool VulkanApp::setup_vulkan()
 	if (!create_swap_chain())
 		return false;
 	if (!create_image_views())
+		return false;
+	if (!create_graphics_pipeline())
 		return false;
 
 	return true;
@@ -555,6 +577,9 @@ bool VulkanApp::create_image_views()
 
 bool VulkanApp::create_graphics_pipeline()
 {
+	auto vert_shader = readFile("vert.spv");
+	auto frag_shader = readFile("frag.spv");
+
 	return true;
 }
 
@@ -583,10 +608,14 @@ bool VulkanApp::release()
 	for (auto& image_view : this->swap_chain_image_views)
 		vkDestroyImageView(this->device, image_view, nullptr);
 
-	vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
+	if (this->device)
+		vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
+
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 	vkDestroyInstance(this->instance, nullptr);
-	vkDestroyDevice(this->device, nullptr);
+
+	if (this->device)
+		vkDestroyDevice(this->device, nullptr);
 
 	glfwDestroyWindow(this->window);
 	glfwTerminate();
