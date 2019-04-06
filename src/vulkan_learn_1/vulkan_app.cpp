@@ -881,7 +881,7 @@ bool VulkanApp::create_command_buffers()
 		vkCmdBeginRenderPass(this->command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		{
 			vkCmdBindPipeline(this->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphics_pipeline);
-			vkCmdDraw(this->command_buffers[i], 3, 1, 0, 0);
+			vkCmdDraw(this->command_buffers[i], 6, 1, 0, 0);
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
 
