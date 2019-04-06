@@ -121,6 +121,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_command_buffers())
 		return false;
+	if (!create_semaphores())
+		return false;
 
 	return true;
 }
@@ -893,6 +895,21 @@ bool VulkanApp::create_command_buffers()
 	return true;
 }
 
+bool VulkanApp::create_semaphores()
+{
+	VkSemaphoreCreateInfo semaphore_info = {};
+	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if(vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->image_available_semaphore) != VK_SUCCESS 
+		|| vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->render_finished_semaphore) != VK_SUCCESS)
+	{
+		Log("Couldn't Create Semaphores.");
+		return false;
+	}
+
+	return true;
+}
+
 bool VulkanApp::draw_frame()
 {
 }
@@ -942,6 +959,8 @@ bool VulkanApp::release()
 		for (auto& frame_buffer : this->swap_chain_frame_buffers)
 			vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
 
+		vkDestroySemaphore(this->device, this->image_available_semaphore, nullptr);
+		vkDestroySemaphore(this->device, this->render_finished_semaphore, nullptr);
 		vkDestroyCommandPool(this->device, this->command_pool, nullptr);
 		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);

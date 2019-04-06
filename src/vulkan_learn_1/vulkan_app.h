@@ -65,6 +65,7 @@ private:
 	bool create_frame_buffers();
 	bool create_command_pool();
 	bool create_command_buffers();
+	bool create_semaphores();
 
 	bool draw_frame();
 
@@ -95,6 +96,9 @@ private:
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
+
+	VkSemaphore image_available_semaphore;
+	VkSemaphore render_finished_semaphore;
 
 	bool validation_layers_enabled;
 
