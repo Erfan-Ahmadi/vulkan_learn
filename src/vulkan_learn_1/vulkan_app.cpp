@@ -830,7 +830,7 @@ bool VulkanApp::create_command_pool()
 	create_info.queueFamilyIndex = this->family_indices.graphics_family.value();
 	create_info.flags = 0;
 
-	if(vkCreateCommandPool(this->device, &create_info, nullptr, &this->command_pool) != VK_SUCCESS)
+	if (vkCreateCommandPool(this->device, &create_info, nullptr, &this->command_pool) != VK_SUCCESS)
 	{
 		Log("Coudn't Create Command Pool");
 		return false;
@@ -849,20 +849,20 @@ bool VulkanApp::create_command_buffers()
 	cmd_buffer_alloc_info.commandPool = this->command_pool;
 	cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-	if(vkAllocateCommandBuffers(this->device, &cmd_buffer_alloc_info, this->command_buffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(this->device, &cmd_buffer_alloc_info, this->command_buffers.data()) != VK_SUCCESS)
 	{
 		Log("Couldn't Allocate Command Buffers");
 		return false;
 	}
 
-	for(auto i = 0; i < this->command_buffers.size(); ++i)
+	for (auto i = 0; i < this->command_buffers.size(); ++i)
 	{
 		VkCommandBufferBeginInfo command_buffer_begin_info = {};
 		command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 		command_buffer_begin_info.pInheritanceInfo = nullptr; // all are primary now
 
-		if(vkBeginCommandBuffer(this->command_buffers[i], &command_buffer_begin_info) != VK_SUCCESS)
+		if (vkBeginCommandBuffer(this->command_buffers[i], &command_buffer_begin_info) != VK_SUCCESS)
 		{
 			Log("Coudn't Begin Command Buffer");
 			return false;
@@ -885,7 +885,7 @@ bool VulkanApp::create_command_buffers()
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
 
-		if(vkEndCommandBuffer(this->command_buffers[i]) != VK_SUCCESS)
+		if (vkEndCommandBuffer(this->command_buffers[i]) != VK_SUCCESS)
 		{
 			Log("vkEndCommandBuffer Failed.");
 			return false;
@@ -900,7 +900,7 @@ bool VulkanApp::create_semaphores()
 	VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	if(vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->image_available_semaphore) != VK_SUCCESS 
+	if (vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->image_available_semaphore) != VK_SUCCESS
 		|| vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->render_finished_semaphore) != VK_SUCCESS)
 	{
 		Log("Couldn't Create Semaphores.");
@@ -912,6 +912,50 @@ bool VulkanApp::create_semaphores()
 
 bool VulkanApp::draw_frame()
 {
+	uint32_t image_index;
+	vkAcquireNextImageKHR(
+		this->device,
+		this->swap_chain,
+		std::numeric_limits<uint64_t>::max(),
+		this->image_available_semaphore,
+		VK_NULL_HANDLE,
+		&image_index);
+
+	VkSemaphore wait_semaphores[] = { this->image_available_semaphore };
+	VkSemaphore singnal_semaphores[] = { this->render_finished_semaphore };
+	//TODO: learn more
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &this->command_buffers[image_index];
+	submit_info.waitSemaphoreCount = 1;
+	submit_info.pWaitSemaphores = wait_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages;
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = singnal_semaphores;
+
+	if (vkQueueSubmit(this->graphics_queue, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS)
+	{
+		Log("vkQueueSubmit Failed");
+		return false;
+	}
+
+	VkPresentInfoKHR present_info = {};
+
+	VkSwapchainKHR swap_chains[] = { this->swap_chain };
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.pImageIndices = &image_index;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores = singnal_semaphores;
+	present_info.pResults = nullptr;
+	present_info.pSwapchains = swap_chains;
+	present_info.swapchainCount = 1;
+
+	vkQueuePresentKHR(this->present_queue, &present_info);
+
+	return true;
 }
 
 VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
@@ -933,6 +977,8 @@ bool VulkanApp::main_loop()
 {
 	while (!glfwWindowShouldClose(this->window))
 	{
+		if (!draw_frame())
+			return false;
 		glfwPollEvents();
 	}
 
