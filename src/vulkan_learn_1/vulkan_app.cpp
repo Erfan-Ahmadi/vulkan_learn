@@ -117,6 +117,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_frame_buffers())
 		return false;
+	if (!create_command_pool())
+		return false;
 
 	return true;
 }
@@ -371,8 +373,8 @@ bool VulkanApp::create_logical_device()
 	if (!check_device_extensions_support())
 		return false;
 
-	this->indices = find_queue_family_indices(this->physical_device);
-	std::set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
+	this->family_indices = find_queue_family_indices(this->physical_device);
+	std::set<uint32_t> unique_queue_families = { family_indices.graphics_family.value(), family_indices.present_family.value() };
 
 	std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 
@@ -411,8 +413,8 @@ bool VulkanApp::create_logical_device()
 
 	auto result = vkCreateDevice(this->physical_device, &create_info, nullptr, &this->device);
 
-	vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
-	vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
+	vkGetDeviceQueue(device, family_indices.graphics_family.value(), 0, &graphics_queue);
+	vkGetDeviceQueue(device, family_indices.present_family.value(), 0, &present_queue);
 
 	return result == VK_SUCCESS;
 }
@@ -521,9 +523,9 @@ bool VulkanApp::create_swap_chain()
 	create_info.minImageCount = min_image_count;
 	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	uint32_t queue_family_indices[] = { this->indices.graphics_family.value(), indices.present_family.value() };
+	uint32_t queue_family_indices[] = { this->family_indices.graphics_family.value(), family_indices.present_family.value() };
 
-	if (this->indices.graphics_family != indices.present_family)
+	if (this->family_indices.graphics_family != family_indices.present_family)
 	{
 		create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		create_info.queueFamilyIndexCount = 2;
@@ -816,6 +818,23 @@ bool VulkanApp::create_frame_buffers()
 	return true;
 }
 
+bool VulkanApp::create_command_pool()
+{
+	VkCommandPoolCreateInfo create_info = {};
+
+	create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	create_info.queueFamilyIndex = this->family_indices.graphics_family.value();
+	create_info.flags = 0;
+
+	if(vkCreateCommandPool(this->device, &create_info, nullptr, &this->command_pool) != VK_SUCCESS)
+	{
+		Log("Coudn't Create Command Pool");
+		return false;
+	}
+
+	return true;
+}
+
 VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
 {
 	VkShaderModuleCreateInfo create_info = {};
@@ -861,6 +880,7 @@ bool VulkanApp::release()
 		for (auto& frame_buffer : this->frame_buffers)
 			vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
 
+		vkDestroyCommandPool(this->device, this->command_pool, nullptr);
 		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 		vkDestroyRenderPass(this->device, this->render_pass, nullptr);

@@ -63,6 +63,7 @@ private:
 	bool create_image_views();
 	bool create_graphics_pipeline();
 	bool create_frame_buffers();
+	bool create_command_pool();
 	VkShaderModule create_shader_module(const std::vector<char>& code);
 
 	bool main_loop();
@@ -72,7 +73,7 @@ private:
 	VkPhysicalDevice physical_device;
 	VkDevice  device;
 	VkSurfaceKHR surface;
-	QueueFamilyIndices indices;
+	QueueFamilyIndices family_indices;
 
 	VkQueue graphics_queue;
 	VkQueue present_queue;
@@ -87,6 +88,8 @@ private:
 	VkRenderPass render_pass;
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
+
+	VkCommandPool command_pool;
 
 	bool validation_layers_enabled;
 
