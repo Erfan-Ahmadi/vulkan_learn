@@ -119,6 +119,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_command_pool())
 		return false;
+	if (!create_command_buffers())
+		return false;
 
 	return true;
 }
@@ -791,9 +793,9 @@ bool VulkanApp::create_graphics_pipeline()
 
 bool VulkanApp::create_frame_buffers()
 {
-	this->frame_buffers.resize(this->swap_chain_image_views.size());
+	this->swap_chain_frame_buffers.resize(this->swap_chain_image_views.size());
 
-	for (auto i = 0; i < this->frame_buffers.size(); ++i)
+	for (auto i = 0; i < this->swap_chain_frame_buffers.size(); ++i)
 	{
 		VkImageView attachments[] = {
 			this->swap_chain_image_views[i]
@@ -808,7 +810,7 @@ bool VulkanApp::create_frame_buffers()
 		create_info.renderPass = this->render_pass;
 		create_info.layers = 1;
 
-		if (vkCreateFramebuffer(this->device, &create_info, nullptr, &this->frame_buffers[i]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(this->device, &create_info, nullptr, &this->swap_chain_frame_buffers[i]) != VK_SUCCESS)
 		{
 			Log("Couldn't Create Frame Buffer, " << i);
 			return false;
@@ -833,6 +835,66 @@ bool VulkanApp::create_command_pool()
 	}
 
 	return true;
+}
+
+bool VulkanApp::create_command_buffers()
+{
+	this->command_buffers.resize(this->swap_chain_frame_buffers.size());
+
+	VkCommandBufferAllocateInfo cmd_buffer_alloc_info = {};
+	cmd_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmd_buffer_alloc_info.commandBufferCount = (uint32_t)this->command_buffers.size();
+	cmd_buffer_alloc_info.commandPool = this->command_pool;
+	cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+	if(vkAllocateCommandBuffers(this->device, &cmd_buffer_alloc_info, this->command_buffers.data()) != VK_SUCCESS)
+	{
+		Log("Couldn't Allocate Command Buffers");
+		return false;
+	}
+
+	for(auto i = 0; i < this->command_buffers.size(); ++i)
+	{
+		VkCommandBufferBeginInfo command_buffer_begin_info = {};
+		command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		command_buffer_begin_info.pInheritanceInfo = nullptr; // all are primary now
+
+		if(vkBeginCommandBuffer(this->command_buffers[i], &command_buffer_begin_info) != VK_SUCCESS)
+		{
+			Log("Coudn't Begin Command Buffer");
+			return false;
+		}
+
+		VkRenderPassBeginInfo render_pass_begin_info = {};
+		render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_pass_begin_info.clearValueCount = 1;
+		VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		render_pass_begin_info.pClearValues = &clear_color;
+		render_pass_begin_info.renderPass = this->render_pass;
+		render_pass_begin_info.framebuffer = this->swap_chain_frame_buffers[i];
+		render_pass_begin_info.renderArea.extent = this->swap_chain_extent;
+		render_pass_begin_info.renderArea.offset = { 0, 0 };
+
+		vkCmdBeginRenderPass(this->command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		{
+			vkCmdBindPipeline(this->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphics_pipeline);
+			vkCmdDraw(this->command_buffers[i], 3, 1, 0, 0);
+		}
+		vkCmdEndRenderPass(this->command_buffers[i]);
+
+		if(vkEndCommandBuffer(this->command_buffers[i]) != VK_SUCCESS)
+		{
+			Log("vkEndCommandBuffer Failed.");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool VulkanApp::draw_frame()
+{
 }
 
 VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
@@ -877,7 +939,7 @@ bool VulkanApp::release()
 
 	if (this->device)
 	{
-		for (auto& frame_buffer : this->frame_buffers)
+		for (auto& frame_buffer : this->swap_chain_frame_buffers)
 			vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
 
 		vkDestroyCommandPool(this->device, this->command_pool, nullptr);

@@ -64,6 +64,10 @@ private:
 	bool create_graphics_pipeline();
 	bool create_frame_buffers();
 	bool create_command_pool();
+	bool create_command_buffers();
+
+	bool draw_frame();
+
 	VkShaderModule create_shader_module(const std::vector<char>& code);
 
 	bool main_loop();
@@ -81,7 +85,7 @@ private:
 	VkSwapchainKHR swap_chain;
 	std::vector<VkImage> swap_chain_images;
 	std::vector<VkImageView> swap_chain_image_views;
-	std::vector<VkFramebuffer> frame_buffers;
+	std::vector<VkFramebuffer> swap_chain_frame_buffers;
 	VkFormat swap_chain_image_format;
 	VkExtent2D swap_chain_extent;
 
@@ -90,6 +94,7 @@ private:
 	VkPipeline graphics_pipeline;
 
 	VkCommandPool command_pool;
+	std::vector<VkCommandBuffer> command_buffers;
 
 	bool validation_layers_enabled;
 
