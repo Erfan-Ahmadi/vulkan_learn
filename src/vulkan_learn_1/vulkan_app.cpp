@@ -115,6 +115,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_graphics_pipeline())
 		return false;
+	if (!create_frame_buffers())
+		return false;
 
 	return true;
 }
@@ -237,7 +239,7 @@ bool VulkanApp::create_instance()
 	VkResult result = vkCreateInstance(&create_info, nullptr, &(this->instance));
 
 	return result == VK_SUCCESS;
-		}
+}
 
 bool VulkanApp::set_up_debug_messenger()
 {
@@ -584,7 +586,7 @@ bool VulkanApp::create_graphics_pipeline()
 	auto vert_shader = read_file(this->app_path + "\\vert.spv");
 	auto frag_shader = read_file(this->app_path + "\\frag.spv");
 
-	if(vert_shader.empty() || frag_shader.empty())
+	if (vert_shader.empty() || frag_shader.empty())
 	{
 		Log("Make sure shaders are correctly read from file.");
 		return false;
@@ -682,16 +684,7 @@ bool VulkanApp::create_graphics_pipeline()
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments = &colorBlendAttachment;
 
-	// Render Pass Color Attachment
-	VkAttachmentDescription color_attachement = {};
-	color_attachement.format = this->swap_chain_image_format;
-	color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	// TODO: understand renderpassees and subpasses beter
 
 	// Graphics Subpass
 	VkAttachmentReference color_attach_ref = {};
@@ -702,6 +695,17 @@ bool VulkanApp::create_graphics_pipeline()
 	subpass_description.colorAttachmentCount = 1;
 	subpass_description.pColorAttachments = &color_attach_ref;
 	subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	// Render Pass Color Attachment
+	VkAttachmentDescription color_attachement = {};
+	color_attachement.format = this->swap_chain_image_format;
+	color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
 	// Render Pass
 	VkRenderPassCreateInfo render_pass_info = {};
@@ -783,6 +787,35 @@ bool VulkanApp::create_graphics_pipeline()
 	return true;
 }
 
+bool VulkanApp::create_frame_buffers()
+{
+	this->frame_buffers.resize(this->swap_chain_image_views.size());
+
+	for (auto i = 0; i < this->frame_buffers.size(); ++i)
+	{
+		VkImageView attachments[] = {
+			this->swap_chain_image_views[i]
+		};
+
+		VkFramebufferCreateInfo create_info = {};
+		create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		create_info.attachmentCount = 1;
+		create_info.width = this->swap_chain_extent.width;
+		create_info.height = this->swap_chain_extent.height;
+		create_info.pAttachments = attachments;
+		create_info.renderPass = this->render_pass;
+		create_info.layers = 1;
+
+		if (vkCreateFramebuffer(this->device, &create_info, nullptr, &this->frame_buffers[i]) != VK_SUCCESS)
+		{
+			Log("Couldn't Create Frame Buffer, " << i);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
 {
 	VkShaderModuleCreateInfo create_info = {};
@@ -825,6 +858,9 @@ bool VulkanApp::release()
 
 	if (this->device)
 	{
+		for (auto& frame_buffer : this->frame_buffers)
+			vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
+
 		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 		vkDestroyRenderPass(this->device, this->render_pass, nullptr);

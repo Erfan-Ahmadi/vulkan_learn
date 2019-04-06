@@ -62,6 +62,7 @@ private:
 	bool create_swap_chain();
 	bool create_image_views();
 	bool create_graphics_pipeline();
+	bool create_frame_buffers();
 	VkShaderModule create_shader_module(const std::vector<char>& code);
 
 	bool main_loop();
@@ -79,6 +80,7 @@ private:
 	VkSwapchainKHR swap_chain;
 	std::vector<VkImage> swap_chain_images;
 	std::vector<VkImageView> swap_chain_image_views;
+	std::vector<VkFramebuffer> frame_buffers;
 	VkFormat swap_chain_image_format;
 	VkExtent2D swap_chain_extent;
 
