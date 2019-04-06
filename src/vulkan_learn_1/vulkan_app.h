@@ -1,8 +1,11 @@
-#include <iostream>
-#include <stdexcept>
 #include <functional>
-#include <cstdlib>
 #include <optional>
+#include <stdio.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#define GetCurrentDir _getcwd
+#endif
 
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -79,13 +82,17 @@ private:
 	VkFormat swap_chain_image_format;
 	VkExtent2D swap_chain_extent;
 
+	VkRenderPass render_pass;
 	VkPipelineLayout pipeline_layout;
+	VkPipeline graphics_pipeline;
 
 	bool validation_layers_enabled;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debug_messenger;
 #endif
+
+	std::string app_path;
 
 	//	Window
 	GLFWwindow* window;

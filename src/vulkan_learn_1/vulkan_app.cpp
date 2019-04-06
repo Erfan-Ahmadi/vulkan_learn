@@ -57,6 +57,10 @@ VulkanApp::VulkanApp() :
 	validation_layers_enabled(false),
 	physical_device(VK_NULL_HANDLE)
 {
+	char current_path[FILENAME_MAX];
+	GetCurrentDir(current_path, sizeof(current_path));
+	current_path[sizeof(current_path) - 1] = '/0';
+	this->app_path = std::string(current_path);
 }
 
 VulkanApp::~VulkanApp()
@@ -233,7 +237,7 @@ bool VulkanApp::create_instance()
 	VkResult result = vkCreateInstance(&create_info, nullptr, &(this->instance));
 
 	return result == VK_SUCCESS;
-}
+		}
 
 bool VulkanApp::set_up_debug_messenger()
 {
@@ -577,8 +581,14 @@ bool VulkanApp::create_image_views()
 
 bool VulkanApp::create_graphics_pipeline()
 {
-	auto vert_shader = read_file("vert.spv");
-	auto frag_shader = read_file("frag.spv");
+	auto vert_shader = read_file(this->app_path + "\\vert.spv");
+	auto frag_shader = read_file(this->app_path + "\\frag.spv");
+
+	if(vert_shader.empty() || frag_shader.empty())
+	{
+		Log("Make sure shaders are correctly read from file.");
+		return false;
+	}
 
 	VkShaderModule vert_shader_module = create_shader_module(vert_shader);
 	VkShaderModule frag_shader_module = create_shader_module(frag_shader);
@@ -587,19 +597,19 @@ bool VulkanApp::create_graphics_pipeline()
 
 	// Shaders
 
-	auto shader_stages = (VkPipelineShaderStageCreateInfo*)malloc(2 * sizeof(VkPipelineShaderStageCreateInfo));
-
-	shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shader_stages[0].module = vert_shader_module;
-	shader_stages[0].pName = "main";
+	VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
+	vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vert_shader_stage_info.module = vert_shader_module;
+	vert_shader_stage_info.pName = "main";
 
 	VkPipelineShaderStageCreateInfo frag_shader_stage_info = {};
-	shader_stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shader_stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shader_stages[1].module = frag_shader_module;
-	shader_stages[1].pName = "main";
+	frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	frag_shader_stage_info.module = frag_shader_module;
+	frag_shader_stage_info.pName = "main";
 
+	VkPipelineShaderStageCreateInfo shader_stages[] = { vert_shader_stage_info, frag_shader_stage_info };
 
 	// Pipeline Fixed Funtions
 
@@ -672,8 +682,48 @@ bool VulkanApp::create_graphics_pipeline()
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments = &colorBlendAttachment;
 
-	// Pipeline Layout
+	// Render Pass Color Attachment
+	VkAttachmentDescription color_attachement = {};
+	color_attachement.format = this->swap_chain_image_format;
+	color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
+	// Graphics Subpass
+	VkAttachmentReference color_attach_ref = {};
+	color_attach_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	color_attach_ref.attachment = 0;
+
+	VkSubpassDescription subpass_description = {};
+	subpass_description.colorAttachmentCount = 1;
+	subpass_description.pColorAttachments = &color_attach_ref;
+	subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	// Render Pass
+	VkRenderPassCreateInfo render_pass_info = {};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	render_pass_info.attachmentCount = 1;
+	render_pass_info.pAttachments = &color_attachement;
+	render_pass_info.subpassCount = 1;
+	render_pass_info.pSubpasses = &subpass_description;
+
+	if (vkCreateRenderPass(this->device, &render_pass_info, nullptr, &this->render_pass) != VK_SUCCESS)
+	{
+		Log("Create Render Pass Failed.");
+
+		vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
+		vkDestroyShaderModule(this->device, frag_shader_module, nullptr);
+
+		return false;
+	}
+
+	// Pipeline 
+
+	// Pipeline Layout : Q : Why layout should be created and what is it's usage?
 	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipeline_layout_info.setLayoutCount = 0;
@@ -681,18 +731,59 @@ bool VulkanApp::create_graphics_pipeline()
 	pipeline_layout_info.pushConstantRangeCount = 0;
 	pipeline_layout_info.pPushConstantRanges = nullptr;
 
-	// TODO: not return false
-	if (vkCreatePipelineLayout(this->device, &pipeline_layout_info, nullptr, this->pipeline_layout) != VK_SUCCESS)
-		return false;
+	if (vkCreatePipelineLayout(this->device, &pipeline_layout_info, nullptr, &this->pipeline_layout) != VK_SUCCESS)
+	{
+		Log("Create Pipeline Layout Failed.");
 
-	free(shader_stages);
+		vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
+		vkDestroyShaderModule(this->device, frag_shader_module, nullptr);
+
+		return false;
+	}
+
+	VkGraphicsPipelineCreateInfo pipeline_create_info = {};
+	pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipeline_create_info.stageCount = 2;
+	pipeline_create_info.pStages = shader_stages;
+	pipeline_create_info.pVertexInputState = &vertexInputInfo;
+	pipeline_create_info.pInputAssemblyState = &inputAssembly;
+	pipeline_create_info.pViewportState = &viewportState;
+	pipeline_create_info.pRasterizationState = &rasterizer;
+	pipeline_create_info.pMultisampleState = &multisampling;
+	pipeline_create_info.pColorBlendState = &colorBlending;
+	pipeline_create_info.layout = this->pipeline_layout;
+	pipeline_create_info.pDepthStencilState = nullptr;
+	pipeline_create_info.pDynamicState = nullptr;
+	pipeline_create_info.renderPass = this->render_pass;
+	pipeline_create_info.subpass = 0;
+
+	pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
+	pipeline_create_info.basePipelineIndex = -1;
+
+	if (vkCreateGraphicsPipelines(
+		this->device,
+		VK_NULL_HANDLE,
+		1,
+		&pipeline_create_info,
+		nullptr,
+		&this->graphics_pipeline) != VK_SUCCESS)
+	{
+		Log("Create Pipeline Failed.");
+
+		free(shader_stages);
+		vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
+		vkDestroyShaderModule(this->device, frag_shader_module, nullptr);
+
+		return false;
+	}
+
 	vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
 	vkDestroyShaderModule(this->device, frag_shader_module, nullptr);
 
 	return true;
 }
 
-VkShaderModule VulkanApp::create_shader_module(const std::vector<char>& code)
+VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
 {
 	VkShaderModuleCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -735,6 +826,7 @@ bool VulkanApp::release()
 	if (this->device)
 	{
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
+		vkDestroyRenderPass(this->device, this->render_pass, nullptr);
 		vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
 
 		// Destroy Device
