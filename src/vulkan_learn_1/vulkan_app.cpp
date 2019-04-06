@@ -825,6 +825,7 @@ bool VulkanApp::release()
 
 	if (this->device)
 	{
+		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 		vkDestroyRenderPass(this->device, this->render_pass, nullptr);
 		vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
