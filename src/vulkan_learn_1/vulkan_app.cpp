@@ -101,7 +101,7 @@ bool VulkanApp::setup_vulkan()
 {
 	if (!create_instance())
 		return false;
-	if (!set_up_debug_messenger())
+	if (this->validation_layers_enabled && !set_up_debug_messenger())
 		return false;
 	if (!create_surface())
 		return false;
@@ -249,6 +249,7 @@ bool VulkanApp::create_instance()
 
 bool VulkanApp::set_up_debug_messenger()
 {
+#if defined(_DEBUG)
 	if (!validation_layers_enabled)
 		return false;
 
@@ -279,6 +280,9 @@ bool VulkanApp::set_up_debug_messenger()
 	{
 		return false;
 	}
+	#else
+	return true;
+#endif
 }
 
 bool VulkanApp::pick_physical_device()
@@ -990,13 +994,14 @@ bool VulkanApp::release()
 	if (is_released)
 		return true;
 
+#if defined (_DEBUG)
 	auto DestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 
 	if (DestroyDebugUtilsMessengerEXT != nullptr)
 	{
 		DestroyDebugUtilsMessengerEXT(this->instance, this->debug_messenger, nullptr);
 	}
-
+#endif
 	for (auto& image_view : this->swap_chain_image_views)
 		vkDestroyImageView(this->device, image_view, nullptr);
 

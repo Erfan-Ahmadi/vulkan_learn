@@ -27,4 +27,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\vulkan_learn_1\shaders\shaders.frag" />
+    <None Include="..\..\..\src\vulkan_learn_1\shaders\shaders.vert" />
+  </ItemGroup>
 </Project>
