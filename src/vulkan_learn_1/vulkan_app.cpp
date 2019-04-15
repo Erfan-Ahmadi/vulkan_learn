@@ -717,12 +717,22 @@ bool VulkanApp::create_graphics_pipeline()
 	color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 	// Render Pass
 	VkRenderPassCreateInfo render_pass_info = {};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	render_pass_info.attachmentCount = 1;
 	render_pass_info.pAttachments = &color_attachement;
 	render_pass_info.subpassCount = 1;
+	render_pass_info.dependencyCount = 1;
+	render_pass_info.pDependencies = &dependency;
 	render_pass_info.pSubpasses = &subpass_description;
 
 	if (vkCreateRenderPass(this->device, &render_pass_info, nullptr, &this->render_pass) != VK_SUCCESS)
