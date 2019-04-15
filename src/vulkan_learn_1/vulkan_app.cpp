@@ -121,7 +121,7 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_command_buffers())
 		return false;
-	if (!create_semaphores())
+	if (!create_sync_objects())
 		return false;
 
 	return true;
@@ -909,16 +909,31 @@ bool VulkanApp::create_command_buffers()
 	return true;
 }
 
-bool VulkanApp::create_semaphores()
+bool VulkanApp::create_sync_objects()
 {
+	this->num_frames = this->swap_chain_images.size();
+
+	this->image_available_semaphore.resize(this->num_frames);
+	this->render_finished_semaphore.resize(this->num_frames);
+	this->draw_fences.resize(this->num_frames);
+
 	VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	if (vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->image_available_semaphore) != VK_SUCCESS
-		|| vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->render_finished_semaphore) != VK_SUCCESS)
+
+	VkFenceCreateInfo fence_info = {};
+	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (auto i = 0; i < this->num_frames; ++i)
 	{
-		Log("Couldn't Create Semaphores.");
-		return false;
+		if (vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->image_available_semaphore[i]) != VK_SUCCESS
+			|| vkCreateSemaphore(this->device, &semaphore_info, nullptr, &this->render_finished_semaphore[i]) != VK_SUCCESS
+			|| vkCreateFence(this->device, &fence_info, nullptr, &this->draw_fences[i]) != VK_SUCCESS)
+		{
+			Log("Couldn't Create Semaphores.");
+			return false;
+		}
 	}
 
 	return true;
@@ -926,17 +941,20 @@ bool VulkanApp::create_semaphores()
 
 bool VulkanApp::draw_frame()
 {
+	vkWaitForFences(this->device, 1, &this->draw_fences[this->current_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+	vkResetFences(this->device, 1, &this->draw_fences[this->current_frame]);
+
 	uint32_t image_index;
 	vkAcquireNextImageKHR(
 		this->device,
 		this->swap_chain,
 		std::numeric_limits<uint64_t>::max(),
-		this->image_available_semaphore,
+		this->image_available_semaphore[this->current_frame],
 		VK_NULL_HANDLE,
 		&image_index);
 
-	VkSemaphore wait_semaphores[] = { this->image_available_semaphore };
-	VkSemaphore singnal_semaphores[] = { this->render_finished_semaphore };
+	VkSemaphore wait_semaphores[] = { this->image_available_semaphore[this->current_frame] };
+	VkSemaphore singnal_semaphores[] = { this->render_finished_semaphore[this->current_frame] };
 	//TODO: learn more
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 
@@ -950,7 +968,7 @@ bool VulkanApp::draw_frame()
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = singnal_semaphores;
 
-	if (vkQueueSubmit(this->graphics_queue, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS)
+	if (vkQueueSubmit(this->graphics_queue, 1, &submit_info, this->draw_fences[this->current_frame]) != VK_SUCCESS)
 	{
 		Log("vkQueueSubmit Failed");
 		return false;
@@ -968,6 +986,8 @@ bool VulkanApp::draw_frame()
 	present_info.swapchainCount = 1;
 
 	vkQueuePresentKHR(this->present_queue, &present_info);
+
+	this->current_frame = (this->current_frame + 1) % this->num_frames;
 
 	return true;
 }
@@ -1004,6 +1024,8 @@ bool VulkanApp::release()
 	if (is_released)
 		return true;
 
+	vkDeviceWaitIdle(this->device);
+
 #if defined (_DEBUG)
 	auto DestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 
@@ -1020,8 +1042,13 @@ bool VulkanApp::release()
 		for (auto& frame_buffer : this->swap_chain_frame_buffers)
 			vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
 
-		vkDestroySemaphore(this->device, this->image_available_semaphore, nullptr);
-		vkDestroySemaphore(this->device, this->render_finished_semaphore, nullptr);
+		for (auto i = 0; i < this->num_frames; ++i)
+		{
+			vkDestroySemaphore(this->device, this->image_available_semaphore[i], nullptr);
+			vkDestroySemaphore(this->device, this->render_finished_semaphore[i], nullptr);
+			vkDestroyFence(this->device, this->draw_fences[i], nullptr);
+		}
+
 		vkDestroyCommandPool(this->device, this->command_pool, nullptr);
 		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
