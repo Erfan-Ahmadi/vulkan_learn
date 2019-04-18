@@ -113,6 +113,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_image_views())
 		return false;
+	if (!create_renderpass())
+		return false;
 	if (!create_graphics_pipeline())
 		return false;
 	if (!create_frame_buffers())
@@ -591,6 +593,56 @@ bool VulkanApp::create_image_views()
 	return true;
 }
 
+bool VulkanApp::create_renderpass()
+{
+	// Graphics Subpass
+	VkAttachmentReference color_attach_ref = {};
+	color_attach_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	color_attach_ref.attachment = 0;
+
+	VkSubpassDescription subpass_description = {};
+	subpass_description.colorAttachmentCount = 1;
+	subpass_description.pColorAttachments = &color_attach_ref;
+	subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	// Render Pass Color Attachment
+	VkAttachmentDescription color_attachement = {};
+	color_attachement.format = this->swap_chain_image_format;
+	color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	// Render Pass
+	VkRenderPassCreateInfo render_pass_info = {};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	render_pass_info.attachmentCount = 1;
+	render_pass_info.pAttachments = &color_attachement;
+	render_pass_info.subpassCount = 1;
+	render_pass_info.dependencyCount = 1;
+	render_pass_info.pDependencies = &dependency;
+	render_pass_info.pSubpasses = &subpass_description;
+
+	if (vkCreateRenderPass(this->device, &render_pass_info, nullptr, &this->render_pass) != VK_SUCCESS)
+	{
+		Log("Create Render Pass Failed.");
+		return false;
+	}
+
+	return true;
+}
+
 bool VulkanApp::create_graphics_pipeline()
 {
 	auto vert_shader = read_file(this->app_path + "\\vert.spv");
@@ -693,57 +745,6 @@ bool VulkanApp::create_graphics_pipeline()
 	colorBlending.logicOpEnable = VK_FALSE;
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments = &colorBlendAttachment;
-
-	// TODO: understand renderpassees and subpasses beter
-
-	// Graphics Subpass
-	VkAttachmentReference color_attach_ref = {};
-	color_attach_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	color_attach_ref.attachment = 0;
-
-	VkSubpassDescription subpass_description = {};
-	subpass_description.colorAttachmentCount = 1;
-	subpass_description.pColorAttachments = &color_attach_ref;
-	subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-	// Render Pass Color Attachment
-	VkAttachmentDescription color_attachement = {};
-	color_attachement.format = this->swap_chain_image_format;
-	color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-	// Render Pass
-	VkRenderPassCreateInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.attachmentCount = 1;
-	render_pass_info.pAttachments = &color_attachement;
-	render_pass_info.subpassCount = 1;
-	render_pass_info.dependencyCount = 1;
-	render_pass_info.pDependencies = &dependency;
-	render_pass_info.pSubpasses = &subpass_description;
-
-	if (vkCreateRenderPass(this->device, &render_pass_info, nullptr, &this->render_pass) != VK_SUCCESS)
-	{
-		Log("Create Render Pass Failed.");
-
-		vkDestroyShaderModule(this->device, vert_shader_module, nullptr);
-		vkDestroyShaderModule(this->device, frag_shader_module, nullptr);
-
-		return false;
-	}
 
 	// Pipeline 
 

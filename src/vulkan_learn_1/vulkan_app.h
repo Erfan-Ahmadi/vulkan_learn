@@ -48,7 +48,6 @@ public:
 private:
 
 	bool setup_window();
-
 	bool setup_vulkan();
 
 	bool create_instance();
@@ -61,6 +60,7 @@ private:
 	bool create_surface();
 	bool create_swap_chain();
 	bool create_image_views();
+	bool create_renderpass();
 	bool create_graphics_pipeline();
 	bool create_frame_buffers();
 	bool create_command_pool();
