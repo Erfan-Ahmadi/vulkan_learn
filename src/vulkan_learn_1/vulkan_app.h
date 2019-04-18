@@ -45,6 +45,8 @@ public:
 
 	bool release();
 
+	void window_resize();
+
 private:
 
 	bool setup_window();
@@ -67,11 +69,16 @@ private:
 	bool create_command_buffers();
 	bool create_sync_objects();
 
+	bool cleanup_swap_chain();
+	bool recreate_swap_chain();
+
 	bool draw_frame();
+
+	bool main_loop();
 
 	VkShaderModule create_shader_module(const std::vector<char>& code);
 
-	bool main_loop();
+	bool should_recreate_swapchain;
 
 	//	Vulkan
 	VkInstance instance;

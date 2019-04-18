@@ -10,8 +10,8 @@
 #include <set>
 #include <fstream>
 
-constexpr int WIDTH = 800;
-constexpr int HEIGHT = 600;
+constexpr int INIT_WIDTH = 800;
+constexpr int INIT_HEIGHT = 600;
 
 const std::vector<const char*> required_validation_layers =
 {
@@ -21,6 +21,12 @@ const std::vector<const char*> required_validation_layers =
 const std::vector<const char*> device_extensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
+
+static void resize_callback(GLFWwindow* window, int width, int height)
+{
+	auto app = reinterpret_cast<VulkanApp*>(glfwGetWindowUserPointer(window));
+	app->window_resize();
+}
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -90,9 +96,10 @@ bool VulkanApp::setup_window()
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-	this->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan-Learn-1", nullptr, nullptr);
+	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	this->window = glfwCreateWindow(INIT_WIDTH, INIT_HEIGHT, "Vulkan-Learn-1", nullptr, nullptr);
+	glfwSetFramebufferSizeCallback(this->window, resize_callback);
+	glfwSetWindowUserPointer(this->window, this);
 
 	return true;
 }
@@ -282,7 +289,7 @@ bool VulkanApp::set_up_debug_messenger()
 	{
 		return false;
 	}
-	#else
+#else
 	return true;
 #endif
 }
@@ -468,7 +475,10 @@ bool VulkanApp::create_swap_chain()
 	}
 	else
 	{
-		this->swap_chain_extent = { WIDTH, HEIGHT };
+		int width, height;
+		glfwGetWindowSize(this->window, &width, &height);
+
+		this->swap_chain_extent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 		this->swap_chain_extent.width = std::max(properties.capabilities.maxImageExtent.width, std::min(this->swap_chain_extent.width, properties.capabilities.minImageExtent.width));
 		this->swap_chain_extent.height = std::max(properties.capabilities.maxImageExtent.height, std::min(this->swap_chain_extent.height, properties.capabilities.minImageExtent.height));
 	}
@@ -940,19 +950,84 @@ bool VulkanApp::create_sync_objects()
 	return true;
 }
 
+bool VulkanApp::cleanup_swap_chain()
+{
+	for (auto& frame_buffer : this->swap_chain_frame_buffers)
+		vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
+
+	vkFreeCommandBuffers(this->device, this->command_pool, this->num_frames, this->command_buffers.data());
+
+	vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
+	vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
+	vkDestroyRenderPass(this->device, this->render_pass, nullptr);
+
+	for (auto& image_view : this->swap_chain_image_views)
+		vkDestroyImageView(this->device, image_view, nullptr);
+
+	vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
+
+	return true;
+}
+
+bool VulkanApp::recreate_swap_chain()
+{
+	vkDeviceWaitIdle(this->device);
+
+	int width = 0, height = 0;
+	while(width == 0 || height == 0)
+	{
+		glfwGetFramebufferSize(this->window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	if (!cleanup_swap_chain())
+		return false;
+
+	if (!create_swap_chain())
+		return false;
+	if (!create_image_views())
+		return false;
+	if (!create_renderpass())
+		return false;
+	if (!create_graphics_pipeline())
+		return false;
+	if (!create_frame_buffers())
+		return false;
+	if (!create_command_buffers())
+		return false;
+
+	return true;
+}
+
 bool VulkanApp::draw_frame()
 {
+	//Log("Before " << this->current_frame);
 	vkWaitForFences(this->device, 1, &this->draw_fences[this->current_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-	vkResetFences(this->device, 1, &this->draw_fences[this->current_frame]);
+	//Log("After " << this->current_frame);
 
 	uint32_t image_index;
-	vkAcquireNextImageKHR(
+
+	const auto acq_image_result = vkAcquireNextImageKHR(
 		this->device,
 		this->swap_chain,
 		std::numeric_limits<uint64_t>::max(),
 		this->image_available_semaphore[this->current_frame],
 		VK_NULL_HANDLE,
 		&image_index);
+
+	if (acq_image_result == VK_SUBOPTIMAL_KHR || acq_image_result == VK_ERROR_OUT_OF_DATE_KHR || this->should_recreate_swapchain)
+	{
+		if (recreate_swap_chain())
+		{
+			this->should_recreate_swapchain = false;
+			Log("SwapChain Recreate");
+			return true;
+		}
+		else
+		{
+			Log("Failed SwapChain Recreatation.");
+		}
+	}
 
 	VkSemaphore wait_semaphores[] = { this->image_available_semaphore[this->current_frame] };
 	VkSemaphore singnal_semaphores[] = { this->render_finished_semaphore[this->current_frame] };
@@ -969,6 +1044,7 @@ bool VulkanApp::draw_frame()
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = singnal_semaphores;
 
+	vkResetFences(this->device, 1, &this->draw_fences[this->current_frame]);
 	if (vkQueueSubmit(this->graphics_queue, 1, &submit_info, this->draw_fences[this->current_frame]) != VK_SUCCESS)
 	{
 		Log("vkQueueSubmit Failed");
@@ -986,7 +1062,20 @@ bool VulkanApp::draw_frame()
 	present_info.pSwapchains = swap_chains;
 	present_info.swapchainCount = 1;
 
-	vkQueuePresentKHR(this->present_queue, &present_info);
+	const auto present_result = vkQueuePresentKHR(this->present_queue, &present_info);
+	if (present_result == VK_SUBOPTIMAL_KHR || present_result == VK_ERROR_OUT_OF_DATE_KHR || this->should_recreate_swapchain)
+	{
+		if (recreate_swap_chain())
+		{
+			this->should_recreate_swapchain = false;
+			Log("SwapChain Recreate");
+			return true;
+		}
+		else
+		{
+			Log("Failed SwapChain Recreatation.");
+		}
+	}
 
 	this->current_frame = (this->current_frame + 1) % this->num_frames;
 
@@ -1035,13 +1124,9 @@ bool VulkanApp::release()
 		DestroyDebugUtilsMessengerEXT(this->instance, this->debug_messenger, nullptr);
 	}
 #endif
-	for (auto& image_view : this->swap_chain_image_views)
-		vkDestroyImageView(this->device, image_view, nullptr);
-
 	if (this->device)
 	{
-		for (auto& frame_buffer : this->swap_chain_frame_buffers)
-			vkDestroyFramebuffer(this->device, frame_buffer, nullptr);
+		cleanup_swap_chain();
 
 		for (auto i = 0; i < this->num_frames; ++i)
 		{
@@ -1051,10 +1136,6 @@ bool VulkanApp::release()
 		}
 
 		vkDestroyCommandPool(this->device, this->command_pool, nullptr);
-		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
-		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
-		vkDestroyRenderPass(this->device, this->render_pass, nullptr);
-		vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
 
 		// Destroy Device
 		vkDestroyDevice(this->device, nullptr);
@@ -1073,4 +1154,9 @@ bool VulkanApp::release()
 
 	is_released = true;
 	return true;
+}
+
+void VulkanApp::window_resize()
+{
+	this->should_recreate_swapchain = true;
 }
