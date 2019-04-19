@@ -71,6 +71,7 @@ private:
 
 	bool cleanup_swap_chain();
 	bool recreate_swap_chain();
+	bool set_viewport_scissor();
 
 	bool draw_frame();
 
@@ -100,6 +101,9 @@ private:
 	VkRenderPass render_pass;
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
+
+	VkViewport viewport;
+	VkRect2D scissor;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;

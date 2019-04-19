@@ -122,6 +122,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!create_renderpass())
 		return false;
+	if (!set_viewport_scissor())
+		return false;
 	if (!create_graphics_pipeline())
 		return false;
 	if (!create_frame_buffers())
@@ -701,7 +703,7 @@ bool VulkanApp::create_graphics_pipeline()
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	// VS
+	// VS Changed To Dynamic
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -776,6 +778,15 @@ bool VulkanApp::create_graphics_pipeline()
 		return false;
 	}
 
+	// Dynamic States
+
+	VkDynamicState dynamic_states[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+	VkPipelineDynamicStateCreateInfo dynamic_state_info = {};
+	dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamic_state_info.dynamicStateCount = 2;
+	dynamic_state_info.pDynamicStates = dynamic_states;
+
 	VkGraphicsPipelineCreateInfo pipeline_create_info = {};
 	pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipeline_create_info.stageCount = 2;
@@ -788,7 +799,7 @@ bool VulkanApp::create_graphics_pipeline()
 	pipeline_create_info.pColorBlendState = &colorBlending;
 	pipeline_create_info.layout = this->pipeline_layout;
 	pipeline_create_info.pDepthStencilState = nullptr;
-	pipeline_create_info.pDynamicState = nullptr;
+	pipeline_create_info.pDynamicState = &dynamic_state_info;
 	pipeline_create_info.renderPass = this->render_pass;
 	pipeline_create_info.subpass = 0;
 
@@ -906,6 +917,8 @@ bool VulkanApp::create_command_buffers()
 		vkCmdBeginRenderPass(this->command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		{
 			vkCmdBindPipeline(this->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphics_pipeline);
+			vkCmdSetViewport(this->command_buffers[i], 0, 1, &this->viewport);
+			vkCmdSetScissor(this->command_buffers[i], 0, 1, &this->scissor);
 			vkCmdDraw(this->command_buffers[i], 6, 1, 0, 0);
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
@@ -957,8 +970,8 @@ bool VulkanApp::cleanup_swap_chain()
 
 	vkFreeCommandBuffers(this->device, this->command_pool, this->num_frames, this->command_buffers.data());
 
-	vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
-	vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
+	//vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
+	//vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 	vkDestroyRenderPass(this->device, this->render_pass, nullptr);
 
 	for (auto& image_view : this->swap_chain_image_views)
@@ -989,12 +1002,29 @@ bool VulkanApp::recreate_swap_chain()
 		return false;
 	if (!create_renderpass())
 		return false;
-	if (!create_graphics_pipeline())
+	if (!set_viewport_scissor())
 		return false;
 	if (!create_frame_buffers())
 		return false;
 	if (!create_command_buffers())
 		return false;
+
+	return true;
+}
+
+bool VulkanApp::set_viewport_scissor()
+{
+	this->viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)this->swap_chain_extent.width;
+	viewport.height = (float)this->swap_chain_extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	this->scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = this->swap_chain_extent;
 
 	return true;
 }
