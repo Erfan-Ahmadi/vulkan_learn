@@ -1062,7 +1062,7 @@ bool VulkanApp::draw_frame()
 	VkSemaphore wait_semaphores[] = { this->image_available_semaphore[this->current_frame] };
 	VkSemaphore singnal_semaphores[] = { this->render_finished_semaphore[this->current_frame] };
 	//TODO: learn more
-	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	VkSubmitInfo submit_info = {};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
