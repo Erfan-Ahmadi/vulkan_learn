@@ -144,7 +144,7 @@ bool VulkanApp::create_instance()
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	app_info.pApplicationName = "vk-1";
 	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.pEngineName = "Mir Engine�";
+	app_info.pEngineName = "Mir Engine";
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.apiVersion = VK_API_VERSION_1_0;
 
@@ -545,10 +545,10 @@ bool VulkanApp::create_swap_chain()
 	create_info.minImageCount = min_image_count;
 	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	uint32_t queue_family_indices[] = { this->family_indices.graphics_family.value(), family_indices.present_family.value() };
-
 	if (this->family_indices.graphics_family != family_indices.present_family)
 	{
+		uint32_t queue_family_indices[] = { this->family_indices.graphics_family.value(), family_indices.present_family.value() };
+
 		create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		create_info.queueFamilyIndexCount = 2;
 		create_info.pQueueFamilyIndices = queue_family_indices;
@@ -835,7 +835,8 @@ bool VulkanApp::create_frame_buffers()
 
 	for (auto i = 0; i < this->swap_chain_frame_buffers.size(); ++i)
 	{
-		VkImageView attachments[] = {
+		VkImageView attachments[] = 
+		{
 			this->swap_chain_image_views[i]
 		};
 
