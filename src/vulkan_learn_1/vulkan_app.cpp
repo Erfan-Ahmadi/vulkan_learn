@@ -349,7 +349,6 @@ QueueFamilyIndices VulkanApp::find_queue_family_indices(VkPhysicalDevice device)
 	std::vector<VkQueueFamilyProperties> queue_families(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queue_families.data());
 
-
 	for (auto i = 0; i < queue_families.size(); ++i)
 	{
 		const auto& queue_familiy = queue_families[i];
@@ -672,7 +671,6 @@ bool VulkanApp::create_graphics_pipeline()
 	// TODO: READ LATER (I am SLEEPY and most of it was copy paste because i'm lazy)
 
 	// Shaders
-
 	VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
 	vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -688,14 +686,16 @@ bool VulkanApp::create_graphics_pipeline()
 	VkPipelineShaderStageCreateInfo shader_stages[] = { vert_shader_stage_info, frag_shader_stage_info };
 
 	// Pipeline Fixed Funtions
+	auto vertex_binding_desc = Vertex::getBindingDesc();
+	auto vertex_attribute_desc = Vertex::getAttributeDescriptions();
 
 	// VI
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_desc.size());
+	vertexInputInfo.pVertexBindingDescriptions = &vertex_binding_desc;
+	vertexInputInfo.pVertexAttributeDescriptions = vertex_attribute_desc.data();
 
 	// IA
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
