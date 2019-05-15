@@ -844,10 +844,10 @@ bool VulkanApp::create_vertex_buffer()
 	uint32_t indices[1] = { this->family_indices.graphics_family.value() };
 	vertex_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertex_buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	vertex_buffer_info.size = sizeof(Vertex) * vertices.size();
+	vertex_buffer_info.size = sizeof(vertices[0]) * vertices.size();
 	vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertex_buffer_info.queueFamilyIndexCount = 1;
-	vertex_buffer_info.pQueueFamilyIndices = indices;
+	//vertex_buffer_info.queueFamilyIndexCount = 1;
+	//vertex_buffer_info.pQueueFamilyIndices = indices;
 
 	if (vkCreateBuffer(this->device, &vertex_buffer_info, nullptr, &this->vertex_buffer) != VK_SUCCESS)
 	{
@@ -876,6 +876,11 @@ bool VulkanApp::create_vertex_buffer()
 		return false;
 	}
 		
+	void* data;
+	vkMapMemory(this->device, this->vertex_buffer_memory, 0, vertex_buffer_info.size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)vertex_buffer_info.size);
+	vkUnmapMemory(this->device, this->vertex_buffer_memory);
+
 	return true;
 }
 
@@ -1026,8 +1031,6 @@ bool VulkanApp::cleanup_swap_chain()
 
 	vkFreeCommandBuffers(this->device, this->command_pool, this->num_frames, this->command_buffers.data());
 
-	//vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
-	//vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 	vkDestroyRenderPass(this->device, this->render_pass, nullptr);
 
 	for (auto& image_view : this->swap_chain_image_views)
@@ -1233,6 +1236,9 @@ bool VulkanApp::release()
 		vkFreeMemory(this->device, this->vertex_buffer_memory, nullptr);
 
 		cleanup_swap_chain();
+		
+		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
+		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
 
 		for (auto i = 0; i < this->num_frames; ++i)
 		{
