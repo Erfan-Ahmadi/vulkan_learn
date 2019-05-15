@@ -13,6 +13,12 @@
 constexpr int INIT_WIDTH = 800;
 constexpr int INIT_HEIGHT = 600;
 
+const std::vector<Vertex> vertices = {
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
+
 const std::vector<const char*> required_validation_layers =
 {
 	"VK_LAYER_LUNARG_standard_validation"
@@ -125,6 +131,8 @@ bool VulkanApp::setup_vulkan()
 	if (!set_viewport_scissor())
 		return false;
 	if (!create_graphics_pipeline())
+		return false;
+	if (!create_vertex_buffer())
 		return false;
 	if (!create_frame_buffers())
 		return false;
@@ -829,6 +837,48 @@ bool VulkanApp::create_graphics_pipeline()
 	return true;
 }
 
+bool VulkanApp::create_vertex_buffer()
+{
+	VkBufferCreateInfo  vertex_buffer_info = {};
+
+	uint32_t indices[1] = { this->family_indices.graphics_family.value() };
+	vertex_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vertex_buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vertex_buffer_info.size = sizeof(Vertex) * vertices.size();
+	vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vertex_buffer_info.queueFamilyIndexCount = 1;
+	vertex_buffer_info.pQueueFamilyIndices = indices;
+
+	if (vkCreateBuffer(this->device, &vertex_buffer_info, nullptr, &this->vertex_buffer) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements(this->device, this->vertex_buffer, &memory_requirements);
+
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+	alloc_info.memoryTypeIndex = find_memory_type(
+		memory_requirements.memoryTypeBits,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	alloc_info.allocationSize = memory_requirements.size;
+
+	if (vkAllocateMemory(this->device, &alloc_info, nullptr, &this->vertex_buffer_memory) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	if (vkBindBufferMemory(this->device, this->vertex_buffer, this->vertex_buffer_memory, 0) != VK_SUCCESS)
+	{
+		return false;
+	}
+		
+	return true;
+}
+
 bool VulkanApp::create_frame_buffers()
 {
 	this->swap_chain_frame_buffers.resize(this->swap_chain_image_views.size());
@@ -920,7 +970,12 @@ bool VulkanApp::create_command_buffers()
 			vkCmdBindPipeline(this->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphics_pipeline);
 			vkCmdSetViewport(this->command_buffers[i], 0, 1, &this->viewport);
 			vkCmdSetScissor(this->command_buffers[i], 0, 1, &this->scissor);
-			vkCmdDraw(this->command_buffers[i], 6, 1, 0, 0);
+
+			VkBuffer vertex_buffers[] = { this->vertex_buffer };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(this->command_buffers[i], 0, 1, vertex_buffers, offsets);
+
+			vkCmdDraw(this->command_buffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
 
@@ -1128,6 +1183,22 @@ VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
 	return shader_module;
 }
 
+uint32_t VulkanApp::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties)
+{
+	VkPhysicalDeviceMemoryProperties mem_properties;
+	vkGetPhysicalDeviceMemoryProperties(this->physical_device, &mem_properties);
+
+	for (uint32_t i = 0; i < mem_properties.memoryTypeCount; ++i)
+	{
+		if (type_filter & (1 << i) && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+
+	return 0;
+}
+
 bool VulkanApp::main_loop()
 {
 	while (!glfwWindowShouldClose(this->window))
@@ -1155,8 +1226,12 @@ bool VulkanApp::release()
 		DestroyDebugUtilsMessengerEXT(this->instance, this->debug_messenger, nullptr);
 	}
 #endif
+
 	if (this->device)
 	{
+		vkDestroyBuffer(this->device, this->vertex_buffer, nullptr);
+		vkFreeMemory(this->device, this->vertex_buffer_memory, nullptr);
+
 		cleanup_swap_chain();
 
 		for (auto i = 0; i < this->num_frames; ++i)

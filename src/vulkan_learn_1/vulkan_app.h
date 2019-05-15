@@ -100,6 +100,7 @@ private:
 	bool create_image_views();
 	bool create_renderpass();
 	bool create_graphics_pipeline();
+	bool create_vertex_buffer();
 	bool create_frame_buffers();
 	bool create_command_pool();
 	bool create_command_buffers();
@@ -114,6 +115,7 @@ private:
 	bool main_loop();
 
 	VkShaderModule create_shader_module(const std::vector<char>& code);
+	uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 
 	bool should_recreate_swapchain;
 
@@ -140,6 +142,9 @@ private:
 
 	VkViewport viewport;
 	VkRect2D scissor;
+
+	VkDeviceMemory vertex_buffer_memory;
+	VkBuffer vertex_buffer;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
