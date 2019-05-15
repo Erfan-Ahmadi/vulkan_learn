@@ -112,10 +112,15 @@ private:
 
 	bool create_buffer(
 		VkDeviceSize buffer_size,
-		VkBufferUsageFlagBits usage,
+		VkBufferUsageFlags usage,
 		VkMemoryPropertyFlags memory_properties,
 		VkBuffer& buffer,
 		VkDeviceMemory& buffer_memory);
+
+	bool copy_buffer(
+		VkBuffer& src_buffer,
+		VkBuffer& dst_buffer,
+		VkDeviceSize buffer_size);
 
 	bool draw_frame();
 
