@@ -14,9 +14,14 @@ constexpr int INIT_WIDTH = 800;
 constexpr int INIT_HEIGHT = 600;
 
 const std::vector<Vertex> vertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> indices = {
+	0, 1, 2, 2, 3, 0
 };
 
 const std::vector<const char*> required_validation_layers =
@@ -137,6 +142,8 @@ bool VulkanApp::setup_vulkan()
 	if (!create_command_pool())
 		return false;
 	if (!create_vertex_buffer())
+		return false;
+	if (!create_index_buffer())
 		return false;
 	if (!create_command_buffers())
 		return false;
@@ -863,6 +870,46 @@ bool VulkanApp::create_vertex_buffer()
 	return true;
 }
 
+bool VulkanApp::create_index_buffer()
+{
+	const VkDeviceSize buffer_size = sizeof(uint16_t) * indices.size();
+
+	VkBuffer staging_buffer;
+	VkDeviceMemory staging_buffer_memory;
+
+	if (!create_buffer(
+		buffer_size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		staging_buffer,
+		staging_buffer_memory))
+	{
+		return false;
+	}
+
+	void* data;
+	vkMapMemory(this->device, staging_buffer_memory, 0, buffer_size, 0, &data);
+	memcpy(data, indices.data(), (size_t)buffer_size);
+	vkUnmapMemory(this->device, staging_buffer_memory);
+
+	if (!create_buffer(
+		buffer_size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		this->index_buffer,
+		this->index_buffer_memory))
+	{
+		return false;
+	}
+
+	copy_buffer(staging_buffer, this->index_buffer, buffer_size);
+
+	vkDestroyBuffer(this->device, staging_buffer, nullptr);
+	vkFreeMemory(this->device, staging_buffer_memory, nullptr);
+
+	return true;
+}
+
 bool VulkanApp::create_buffer(
 	VkDeviceSize buffer_size,
 	VkBufferUsageFlags usage,
@@ -1050,7 +1097,9 @@ bool VulkanApp::create_command_buffers()
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(this->command_buffers[i], 0, 1, vertex_buffers, offsets);
 
-			vkCmdDraw(this->command_buffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+			vkCmdBindIndexBuffer(this->command_buffers[i], this->index_buffer, 0, VK_INDEX_TYPE_UINT16);
+
+			vkCmdDrawIndexed(this->command_buffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
 
@@ -1306,6 +1355,9 @@ bool VulkanApp::release()
 	{
 		vkDestroyBuffer(this->device, this->vertex_buffer, nullptr);
 		vkFreeMemory(this->device, this->vertex_buffer_memory, nullptr);
+
+		vkDestroyBuffer(this->device, this->index_buffer, nullptr);
+		vkFreeMemory(this->device, this->index_buffer_memory, nullptr);
 
 		cleanup_swap_chain();
 

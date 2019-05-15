@@ -101,6 +101,7 @@ private:
 	bool create_renderpass();
 	bool create_graphics_pipeline();
 	bool create_vertex_buffer();
+	bool create_index_buffer();
 	bool create_frame_buffers();
 	bool create_command_pool();
 	bool create_command_buffers();
@@ -155,8 +156,10 @@ private:
 	VkViewport viewport;
 	VkRect2D scissor;
 
-	VkDeviceMemory vertex_buffer_memory;
 	VkBuffer vertex_buffer;
+	VkDeviceMemory vertex_buffer_memory;
+	VkBuffer index_buffer;
+	VkDeviceMemory index_buffer_memory;
 
 	VkCommandPool command_pool;
 	std::vector<VkCommandBuffer> command_buffers;
