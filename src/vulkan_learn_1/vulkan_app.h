@@ -110,6 +110,13 @@ private:
 	bool recreate_swap_chain();
 	bool set_viewport_scissor();
 
+	bool create_buffer(
+		VkDeviceSize buffer_size,
+		VkBufferUsageFlagBits usage,
+		VkMemoryPropertyFlags memory_properties,
+		VkBuffer& buffer,
+		VkDeviceMemory& buffer_memory);
+
 	bool draw_frame();
 
 	bool main_loop();

@@ -36,7 +36,7 @@ static void resize_callback(GLFWwindow* window, int width, int height)
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
+	VkDebugUtilsMessageTypeFlagsEXT maessageType,
 	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 	void* pUserData) {
 
@@ -825,17 +825,41 @@ bool VulkanApp::create_graphics_pipeline()
 
 bool VulkanApp::create_vertex_buffer()
 {
-	VkBufferCreateInfo  vertex_buffer_info = {};
+	const VkDeviceSize vertices_size = sizeof(Vertex) * vertices.size();
 
-	uint32_t indices[1] = { this->family_indices.graphics_family.value() };
-	vertex_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertex_buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	vertex_buffer_info.size = sizeof(vertices[0]) * vertices.size();
-	vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertex_buffer_info.queueFamilyIndexCount = 1;
-	vertex_buffer_info.pQueueFamilyIndices = indices;
+	if (!create_buffer(
+		vertices_size,
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		this->vertex_buffer,
+		this->vertex_buffer_memory))
+	{
+		return false;
+	}
+		
+	void* data;
+	vkMapMemory(this->device, this->vertex_buffer_memory, 0, vertices_size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)vertices_size);
+	vkUnmapMemory(this->device, this->vertex_buffer_memory);
 
-	if (vkCreateBuffer(this->device, &vertex_buffer_info, nullptr, &this->vertex_buffer) != VK_SUCCESS)
+	return true;
+}
+
+bool VulkanApp::create_buffer(
+	VkDeviceSize buffer_size,
+	VkBufferUsageFlagBits usage,
+	VkMemoryPropertyFlags memory_properties,
+	VkBuffer& buffer,
+	VkDeviceMemory& buffer_memory)
+{
+	VkBufferCreateInfo  buffer_info = {};
+
+	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	buffer_info.size = buffer_size;
+	buffer_info.usage = usage;
+
+	if (vkCreateBuffer(this->device, &buffer_info, nullptr, &buffer) != VK_SUCCESS)
 	{
 		return false;
 	}
@@ -848,24 +872,19 @@ bool VulkanApp::create_vertex_buffer()
 
 	alloc_info.memoryTypeIndex = find_memory_type(
 		memory_requirements.memoryTypeBits,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		memory_properties);
 
 	alloc_info.allocationSize = memory_requirements.size;
 
-	if (vkAllocateMemory(this->device, &alloc_info, nullptr, &this->vertex_buffer_memory) != VK_SUCCESS)
+	if (vkAllocateMemory(this->device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	if (vkBindBufferMemory(this->device, this->vertex_buffer, this->vertex_buffer_memory, 0) != VK_SUCCESS)
+	if (vkBindBufferMemory(this->device, this->vertex_buffer, buffer_memory, 0) != VK_SUCCESS)
 	{
 		return false;
 	}
-		
-	void* data;
-	vkMapMemory(this->device, this->vertex_buffer_memory, 0, vertex_buffer_info.size, 0, &data);
-	memcpy(data, vertices.data(), (size_t)vertex_buffer_info.size);
-	vkUnmapMemory(this->device, this->vertex_buffer_memory);
 
 	return true;
 }
