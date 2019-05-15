@@ -711,25 +711,12 @@ bool VulkanApp::create_graphics_pipeline()
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	// VS Changed To Dynamic
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)this->swap_chain_extent.width;
-	viewport.height = (float)this->swap_chain_extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = this->swap_chain_extent;
-
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.viewportCount = 1;
-	viewportState.pViewports = &viewport;
+	viewportState.pViewports = &this->viewport;
 	viewportState.scissorCount = 1;
-	viewportState.pScissors = &scissor;
+	viewportState.pScissors = &this->scissor;
 
 	// RS
 	VkPipelineRasterizationStateCreateInfo rasterizer = {};
@@ -787,7 +774,6 @@ bool VulkanApp::create_graphics_pipeline()
 	}
 
 	// Dynamic States
-
 	VkDynamicState dynamic_states[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 
 	VkPipelineDynamicStateCreateInfo dynamic_state_info = {};
@@ -846,8 +832,8 @@ bool VulkanApp::create_vertex_buffer()
 	vertex_buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	vertex_buffer_info.size = sizeof(vertices[0]) * vertices.size();
 	vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	//vertex_buffer_info.queueFamilyIndexCount = 1;
-	//vertex_buffer_info.pQueueFamilyIndices = indices;
+	vertex_buffer_info.queueFamilyIndexCount = 1;
+	vertex_buffer_info.pQueueFamilyIndices = indices;
 
 	if (vkCreateBuffer(this->device, &vertex_buffer_info, nullptr, &this->vertex_buffer) != VK_SUCCESS)
 	{
@@ -1104,7 +1090,9 @@ bool VulkanApp::draw_frame()
 		VK_NULL_HANDLE,
 		&image_index);
 
-	if (acq_image_result == VK_SUBOPTIMAL_KHR || acq_image_result == VK_ERROR_OUT_OF_DATE_KHR || this->should_recreate_swapchain)
+	if (acq_image_result == VK_SUBOPTIMAL_KHR 
+		|| acq_image_result == VK_ERROR_OUT_OF_DATE_KHR 
+		|| this->should_recreate_swapchain)
 	{
 		if (recreate_swap_chain())
 		{
