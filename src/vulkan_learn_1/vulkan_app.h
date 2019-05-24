@@ -71,6 +71,13 @@ struct SwapChainSupportDetails
 	std::vector<VkPresentModeKHR> present_modes;
 };
 
+struct UniformBufferObject
+{
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
+};
+
 class VulkanApp
 {
 public:
@@ -99,9 +106,13 @@ private:
 	bool create_swap_chain();
 	bool create_image_views();
 	bool create_renderpass();
+	bool create_descriptor_set_layout();
 	bool create_graphics_pipeline();
 	bool create_vertex_buffer();
 	bool create_index_buffer();
+	bool create_uniform_buffers();
+	bool create_descriptor_pool();
+	bool create_descriptor_sets();
 	bool create_frame_buffers();
 	bool create_command_pool();
 	bool create_command_buffers();
@@ -122,6 +133,8 @@ private:
 		VkBuffer& src_buffer,
 		VkBuffer& dst_buffer,
 		VkDeviceSize buffer_size);
+
+	void update_ubo(uint32_t current_image);
 
 	bool draw_frame();
 
@@ -150,11 +163,19 @@ private:
 	VkExtent2D swap_chain_extent;
 
 	VkRenderPass render_pass;
+
+	VkDescriptorPool descriptor_pool;
+	std::vector<VkDescriptorSet> descriptor_sets;
+	VkDescriptorSetLayout descriptor_set_layout;
+
 	VkPipelineLayout pipeline_layout;
 	VkPipeline graphics_pipeline;
 
 	VkViewport viewport;
 	VkRect2D scissor;
+
+	std::vector<VkBuffer> ubo_buffers;
+	std::vector<VkDeviceMemory> ubo_buffers_memory;
 
 	VkBuffer vertex_buffer;
 	VkDeviceMemory vertex_buffer_memory;

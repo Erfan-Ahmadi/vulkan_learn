@@ -9,6 +9,13 @@
 #include <optional>
 #include <set>
 #include <fstream>
+#include <chrono>
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+
 
 constexpr int INIT_WIDTH = 800;
 constexpr int INIT_HEIGHT = 600;
@@ -135,6 +142,8 @@ bool VulkanApp::setup_vulkan()
 		return false;
 	if (!set_viewport_scissor())
 		return false;
+	if (!create_descriptor_set_layout())
+		return false;
 	if (!create_graphics_pipeline())
 		return false;
 	if (!create_frame_buffers())
@@ -144,6 +153,12 @@ bool VulkanApp::setup_vulkan()
 	if (!create_vertex_buffer())
 		return false;
 	if (!create_index_buffer())
+		return false;
+	if (!create_uniform_buffers())
+		return false;
+	if (!create_descriptor_pool())
+		return false;
+	if (!create_descriptor_sets())
 		return false;
 	if (!create_command_buffers())
 		return false;
@@ -669,6 +684,26 @@ bool VulkanApp::create_renderpass()
 	return true;
 }
 
+bool VulkanApp::create_descriptor_set_layout()
+{
+	VkDescriptorSetLayoutBinding descriptor_set_binding = {};
+	descriptor_set_binding.binding = 0;
+	descriptor_set_binding.descriptorCount = 1;
+	descriptor_set_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptor_set_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo layout_info = {};
+	layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layout_info.bindingCount = 1;
+	layout_info.pBindings = &descriptor_set_binding;
+	//descriptor_set_info.flags = 
+
+	if (vkCreateDescriptorSetLayout(this->device, &layout_info, nullptr, &this->descriptor_set_layout) != VK_SUCCESS)
+		return false;
+
+	return true;
+}
+
 bool VulkanApp::create_graphics_pipeline()
 {
 	auto vert_shader = read_file(this->app_path + "\\vert.spv");
@@ -733,7 +768,7 @@ bool VulkanApp::create_graphics_pipeline()
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
 	rasterizer.depthBiasClamp = 0.0f; // Optional
@@ -765,8 +800,8 @@ bool VulkanApp::create_graphics_pipeline()
 	// Pipeline Layout : Q : Why layout should be created and what is it's usage?
 	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipeline_layout_info.setLayoutCount = 0;
-	pipeline_layout_info.pSetLayouts = nullptr;
+	pipeline_layout_info.setLayoutCount = 1;
+	pipeline_layout_info.pSetLayouts = &this->descriptor_set_layout;
 	pipeline_layout_info.pushConstantRangeCount = 0;
 	pipeline_layout_info.pPushConstantRanges = nullptr;
 
@@ -910,43 +945,43 @@ bool VulkanApp::create_index_buffer()
 	return true;
 }
 
-bool VulkanApp::create_buffer(
-	VkDeviceSize buffer_size,
-	VkBufferUsageFlags usage,
-	VkMemoryPropertyFlags memory_properties,
-	VkBuffer& buffer,
-	VkDeviceMemory& buffer_memory)
+bool VulkanApp::create_uniform_buffers()
 {
-	VkBufferCreateInfo  buffer_info = {};
+	const auto buffer_size = sizeof(UniformBufferObject);
 
-	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	buffer_info.size = buffer_size;
-	buffer_info.usage = usage;
+	const auto size = this->swap_chain_images.size();
+	this->ubo_buffers.resize(size);
+	this->ubo_buffers_memory.resize(size);
 
-	if (vkCreateBuffer(this->device, &buffer_info, nullptr, &buffer) != VK_SUCCESS)
+	for (size_t i = 0; i < size; ++i)
 	{
-		return false;
+		if (!this->create_buffer(
+			buffer_size,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			this->ubo_buffers[i],
+			this->ubo_buffers_memory[i]))
+		{
+			return false;
+		}
 	}
 
-	VkMemoryRequirements memory_requirements;
-	vkGetBufferMemoryRequirements(this->device, buffer, &memory_requirements);
+	return true;
+}
 
-	VkMemoryAllocateInfo alloc_info = {};
-	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+bool VulkanApp::create_descriptor_pool()
+{
+	VkDescriptorPoolSize pool_size = {};
+	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_size.descriptorCount = static_cast<uint32_t>(this->swap_chain_images.size());
 
-	alloc_info.memoryTypeIndex = find_memory_type(
-		memory_requirements.memoryTypeBits,
-		memory_properties);
-
-	alloc_info.allocationSize = memory_requirements.size;
-
-	if (vkAllocateMemory(this->device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
-	{
-		return false;
-	}
-
-	if (vkBindBufferMemory(this->device, buffer, buffer_memory, 0) != VK_SUCCESS)
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.poolSizeCount = 1;
+	pool_info.pPoolSizes = &pool_size;
+	pool_info.maxSets = static_cast<uint32_t>(this->swap_chain_images.size());
+	
+	if (vkCreateDescriptorPool(this->device, &pool_info, nullptr, &this->descriptor_pool) != VK_SUCCESS)
 	{
 		return false;
 	}
@@ -954,51 +989,39 @@ bool VulkanApp::create_buffer(
 	return true;
 }
 
-bool VulkanApp::copy_buffer(
-	VkBuffer& src_buffer,
-	VkBuffer& dst_buffer,
-	VkDeviceSize buffer_size)
+bool VulkanApp::create_descriptor_sets()
 {
-	VkCommandBuffer command_buffer;
+	std::vector<VkDescriptorSetLayout> layouts(swap_chain_images.size(), descriptor_set_layout);
 
-	VkCommandBufferAllocateInfo command_buffer_info = {};
-	command_buffer_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	command_buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	command_buffer_info.commandPool = this->command_pool;
-	command_buffer_info.commandBufferCount = 1;
+	VkDescriptorSetAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	alloc_info.pSetLayouts = layouts.data();
+	alloc_info.descriptorPool = this->descriptor_pool;
+	alloc_info.descriptorSetCount = static_cast<uint32_t>(this->swap_chain_images.size());
 
-	if (vkAllocateCommandBuffers(this->device, &command_buffer_info, &command_buffer) != VK_SUCCESS)
-	{
+	this->descriptor_sets.resize(swap_chain_images.size());
+
+	if (vkAllocateDescriptorSets(this->device, &alloc_info, this->descriptor_sets.data()) != VK_SUCCESS)
 		return false;
+
+	for (size_t i = 0; i < this->swap_chain_images.size(); ++i)
+	{
+		VkDescriptorBufferInfo buffer_info = {};
+		buffer_info.offset = 0;
+		buffer_info.range = sizeof(UniformBufferObject);
+		buffer_info.buffer = this->ubo_buffers[i];
+
+		VkWriteDescriptorSet desc_write = {};
+		desc_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		desc_write.dstBinding = 0;
+		desc_write.descriptorCount = 1;
+		desc_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		desc_write.dstSet = this->descriptor_sets[i];
+		desc_write.pBufferInfo = &buffer_info;
+		desc_write.dstArrayElement = 0;
+
+		vkUpdateDescriptorSets(this->device, 1, &desc_write, 0, nullptr);
 	}
-
-	// Record
-	VkCommandBufferBeginInfo cmd_begin = {};
-	cmd_begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmd_begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(command_buffer, &cmd_begin);
-
-	VkBufferCopy copy_region = {};
-	copy_region.srcOffset = 0;
-	copy_region.dstOffset = 0;
-	copy_region.size = buffer_size;
-	vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region);
-
-	vkEndCommandBuffer(command_buffer);
-
-	// Submit
-	VkSubmitInfo cmd_submit_info = {};
-	cmd_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	cmd_submit_info.commandBufferCount = 1;
-	cmd_submit_info.pCommandBuffers = &command_buffer;
-	vkQueueSubmit(this->graphics_queue, 1, &cmd_submit_info, nullptr);
-	vkQueueWaitIdle(this->graphics_queue);
-
-	// Free
-	vkFreeCommandBuffers(this->device, this->command_pool, 1, &command_buffer);
-
-	return true;
 }
 
 bool VulkanApp::create_frame_buffers()
@@ -1099,6 +1122,7 @@ bool VulkanApp::create_command_buffers()
 
 			vkCmdBindIndexBuffer(this->command_buffers[i], this->index_buffer, 0, VK_INDEX_TYPE_UINT16);
 
+			vkCmdBindDescriptorSets(this->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline_layout, 0, 1, &this->descriptor_sets[i], 0, nullptr);
 			vkCmdDrawIndexed(this->command_buffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
@@ -1157,6 +1181,14 @@ bool VulkanApp::cleanup_swap_chain()
 
 	vkDestroySwapchainKHR(this->device, this->swap_chain, nullptr);
 
+	for (size_t i = 0; i < this->swap_chain_images.size(); ++i)
+	{
+		vkDestroyBuffer(this->device, this->ubo_buffers[i], nullptr);
+		vkFreeMemory(this->device, this->ubo_buffers_memory[i], nullptr);
+	}
+
+	vkDestroyDescriptorPool(this->device, this->descriptor_pool, nullptr);
+
 	return true;
 }
 
@@ -1184,6 +1216,10 @@ bool VulkanApp::recreate_swap_chain()
 		return false;
 	if (!create_frame_buffers())
 		return false;
+	if (!create_uniform_buffers())
+		return false;
+	if (!create_descriptor_pool())
+		return false;
 	if (!create_command_buffers())
 		return false;
 
@@ -1207,12 +1243,26 @@ bool VulkanApp::set_viewport_scissor()
 	return true;
 }
 
+void VulkanApp::update_ubo(uint32_t current_image)
+{
+	UniformBufferObject ubo = {};
+
+	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.proj = glm::perspective(glm::radians(60.0f), this->swap_chain_extent.width / (float)this->swap_chain_extent.height, 0.1f, 10.0f);
+	ubo.proj[1][1] *= -1;
+
+	void* data;
+	vkMapMemory(this->device, this->ubo_buffers_memory[current_image], 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(this->device, this->ubo_buffers_memory[current_image]);
+}
+
 bool VulkanApp::draw_frame()
 {
-	//Log("Before " << this->current_frame);
 	vkWaitForFences(this->device, 1, &this->draw_fences[this->current_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-	//Log("After " << this->current_frame);
 
+	// image_index vs current_frame
 	uint32_t image_index;
 
 	const auto acq_image_result = vkAcquireNextImageKHR(
@@ -1241,8 +1291,10 @@ bool VulkanApp::draw_frame()
 
 	VkSemaphore wait_semaphores[] = { this->image_available_semaphore[this->current_frame] };
 	VkSemaphore singnal_semaphores[] = { this->render_finished_semaphore[this->current_frame] };
-	//TODO: learn more
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	// Update UBO
+	update_ubo(image_index);
 
 	VkSubmitInfo submit_info = {};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1291,6 +1343,98 @@ bool VulkanApp::draw_frame()
 
 	return true;
 }
+
+bool VulkanApp::create_buffer(
+	VkDeviceSize buffer_size,
+	VkBufferUsageFlags usage,
+	VkMemoryPropertyFlags memory_properties,
+	VkBuffer & buffer,
+	VkDeviceMemory & buffer_memory)
+{
+	VkBufferCreateInfo  buffer_info = {};
+
+	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	buffer_info.size = buffer_size;
+	buffer_info.usage = usage;
+
+	if (vkCreateBuffer(this->device, &buffer_info, nullptr, &buffer) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements(this->device, buffer, &memory_requirements);
+
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+	alloc_info.memoryTypeIndex = find_memory_type(
+		memory_requirements.memoryTypeBits,
+		memory_properties);
+
+	alloc_info.allocationSize = memory_requirements.size;
+
+	if (vkAllocateMemory(this->device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	if (vkBindBufferMemory(this->device, buffer, buffer_memory, 0) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool VulkanApp::copy_buffer(
+	VkBuffer & src_buffer,
+	VkBuffer & dst_buffer,
+	VkDeviceSize buffer_size)
+{
+	VkCommandBuffer command_buffer;
+
+	VkCommandBufferAllocateInfo command_buffer_info = {};
+	command_buffer_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	command_buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	command_buffer_info.commandPool = this->command_pool;
+	command_buffer_info.commandBufferCount = 1;
+
+	if (vkAllocateCommandBuffers(this->device, &command_buffer_info, &command_buffer) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	// Record
+	VkCommandBufferBeginInfo cmd_begin = {};
+	cmd_begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmd_begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(command_buffer, &cmd_begin);
+
+	VkBufferCopy copy_region = {};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = 0;
+	copy_region.size = buffer_size;
+	vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region);
+
+	vkEndCommandBuffer(command_buffer);
+
+	// Submit
+	VkSubmitInfo cmd_submit_info = {};
+	cmd_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	cmd_submit_info.commandBufferCount = 1;
+	cmd_submit_info.pCommandBuffers = &command_buffer;
+	vkQueueSubmit(this->graphics_queue, 1, &cmd_submit_info, nullptr);
+	vkQueueWaitIdle(this->graphics_queue);
+
+	// Free
+	vkFreeCommandBuffers(this->device, this->command_pool, 1, &command_buffer);
+
+	return true;
+}
+
 
 VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
 {
@@ -1360,6 +1504,8 @@ bool VulkanApp::release()
 		vkFreeMemory(this->device, this->index_buffer_memory, nullptr);
 
 		cleanup_swap_chain();
+
+		vkDestroyDescriptorSetLayout(this->device, this->descriptor_set_layout, nullptr);
 
 		vkDestroyPipeline(this->device, this->graphics_pipeline, nullptr);
 		vkDestroyPipelineLayout(this->device, this->pipeline_layout, nullptr);
