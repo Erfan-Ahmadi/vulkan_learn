@@ -15,10 +15,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-
-
-constexpr int INIT_WIDTH = 800;
-constexpr int INIT_HEIGHT = 600;
+constexpr int INIT_WIDTH = 1600;
+constexpr int INIT_HEIGHT = 900;
 
 const std::vector<Vertex> vertices = {
 	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -28,7 +26,8 @@ const std::vector<Vertex> vertices = {
 };
 
 const std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0
+	0, 1, 2, 2, 3, 0,
+	2, 1, 0, 0, 3, 2
 };
 
 const std::vector<const char*> required_validation_layers =
@@ -1220,6 +1219,8 @@ bool VulkanApp::recreate_swap_chain()
 		return false;
 	if (!create_descriptor_pool())
 		return false;
+	if (!create_descriptor_sets())
+		return false;
 	if (!create_command_buffers())
 		return false;
 
@@ -1245,9 +1246,17 @@ bool VulkanApp::set_viewport_scissor()
 
 void VulkanApp::update_ubo(uint32_t current_image)
 {
+	static auto start_time = std::chrono::high_resolution_clock::now();
+
+	auto now = std::chrono::high_resolution_clock::now();
+
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(now - start_time).count();
+
 	UniformBufferObject ubo = {};
 
-	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f) * glm::cos(time) * glm::sin(time), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.model = glm::rotate(ubo.model, glm::radians(90.0f) * glm::sin(time), glm::vec3(0.0f, 1.0f, 0.0f));
+
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(glm::radians(60.0f), this->swap_chain_extent.width / (float)this->swap_chain_extent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
@@ -1434,7 +1443,6 @@ bool VulkanApp::copy_buffer(
 
 	return true;
 }
-
 
 VkShaderModule VulkanApp::create_shader_module(const std::vector<char> & code)
 {
