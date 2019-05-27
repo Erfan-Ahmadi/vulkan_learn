@@ -55,6 +55,12 @@ struct Vertex
 	}
 };
 
+struct model
+{
+	std::vector<Vertex> vertices;
+	std::vector<uint16_t> indices;
+};
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphics_family;
 	std::optional<uint32_t> present_family;
@@ -144,6 +150,9 @@ private:
 	uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 
 	bool should_recreate_swapchain;
+
+	// Sample
+	model circle;
 
 	//	Vulkan
 	VkInstance instance;

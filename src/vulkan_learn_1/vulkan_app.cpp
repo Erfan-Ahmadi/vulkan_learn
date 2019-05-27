@@ -15,9 +15,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-constexpr int INIT_WIDTH = 1600;
-constexpr int INIT_HEIGHT = 900;
+constexpr int INIT_WIDTH = 800;
+constexpr int INIT_HEIGHT = 600;
 
+/*
 const std::vector<Vertex> vertices = {
 	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
@@ -29,6 +30,28 @@ const std::vector<uint16_t> indices = {
 	0, 1, 2, 2, 3, 0,
 	2, 1, 0, 0, 3, 2
 };
+*/
+
+const void get_circle_model(const size_t& num_segments, model* model_out)
+{
+	model_out->vertices.resize(num_segments + 1);
+	model_out->indices.resize(num_segments * 3);
+
+	float step = glm::two_pi<float>() / num_segments;
+	
+	model_out->vertices[0] = {{0.0f, 0.0f}, {0.5f, 0.6f, 0.7f}};
+
+	for(size_t i = 1; i < num_segments + 1; ++i)
+	{
+		model_out->vertices[i] = {{glm::cos(i * step), glm::sin(i * step)}, {1.0f, 1.0f, 1.0f}};
+
+		model_out->indices[i * 3 - 3] = 0;
+		model_out->indices[i * 3 - 2] = i;
+		model_out->indices[i * 3 - 1] = i + 1;
+	}
+
+	model_out->indices[model_out->indices.size() - 1] = 1;
+}
 
 const std::vector<const char*> required_validation_layers =
 {
@@ -866,7 +889,8 @@ bool VulkanApp::create_graphics_pipeline()
 
 bool VulkanApp::create_vertex_buffer()
 {
-	const VkDeviceSize buffer_size = sizeof(Vertex) * vertices.size();
+	get_circle_model(30, &this->circle);
+	const VkDeviceSize buffer_size = sizeof(Vertex) * this->circle.vertices.size();
 
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_buffer_memory;
@@ -883,7 +907,7 @@ bool VulkanApp::create_vertex_buffer()
 
 	void* data;
 	vkMapMemory(this->device, staging_buffer_memory, 0, buffer_size, 0, &data);
-	memcpy(data, vertices.data(), (size_t)buffer_size);
+	memcpy(data, this->circle.vertices.data(), (size_t)buffer_size);
 	vkUnmapMemory(this->device, staging_buffer_memory);
 
 	if (!create_buffer(
@@ -906,7 +930,7 @@ bool VulkanApp::create_vertex_buffer()
 
 bool VulkanApp::create_index_buffer()
 {
-	const VkDeviceSize buffer_size = sizeof(uint16_t) * indices.size();
+	const VkDeviceSize buffer_size = sizeof(uint16_t) * this->circle.indices.size();
 
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_buffer_memory;
@@ -923,7 +947,7 @@ bool VulkanApp::create_index_buffer()
 
 	void* data;
 	vkMapMemory(this->device, staging_buffer_memory, 0, buffer_size, 0, &data);
-	memcpy(data, indices.data(), (size_t)buffer_size);
+	memcpy(data, this->circle.indices.data(), (size_t)buffer_size);
 	vkUnmapMemory(this->device, staging_buffer_memory);
 
 	if (!create_buffer(
@@ -1122,7 +1146,7 @@ bool VulkanApp::create_command_buffers()
 			vkCmdBindIndexBuffer(this->command_buffers[i], this->index_buffer, 0, VK_INDEX_TYPE_UINT16);
 
 			vkCmdBindDescriptorSets(this->command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline_layout, 0, 1, &this->descriptor_sets[i], 0, nullptr);
-			vkCmdDrawIndexed(this->command_buffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(this->command_buffers[i], static_cast<uint32_t>(this->circle.indices.size()), 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(this->command_buffers[i]);
 
@@ -1254,10 +1278,10 @@ void VulkanApp::update_ubo(uint32_t current_image)
 
 	UniformBufferObject ubo = {};
 
-	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f) * glm::cos(time) * glm::sin(time), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.model = glm::rotate(ubo.model, glm::radians(90.0f) * glm::sin(time), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f) * 0,
+	                        glm::vec3(0.0f, 1.0f, 0.0f));
 
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, +3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(60.0f), this->swap_chain_extent.width / (float)this->swap_chain_extent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 
