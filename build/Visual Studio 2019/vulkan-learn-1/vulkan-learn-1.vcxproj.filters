@@ -28,7 +28,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\src\vulkan_learn_1\shaders\shaders.frag" />
-    <None Include="..\..\..\src\vulkan_learn_1\shaders\shaders.vert" />
+    <None Include="..\..\..\src\shaders\shaders.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\..\src\shaders\shaders.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

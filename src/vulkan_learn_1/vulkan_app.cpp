@@ -728,8 +728,8 @@ bool VulkanApp::create_descriptor_set_layout()
 
 bool VulkanApp::create_graphics_pipeline()
 {
-	auto vert_shader = read_file(this->app_path + "\\vert.spv");
-	auto frag_shader = read_file(this->app_path + "\\frag.spv");
+	auto vert_shader = read_file(this->app_path + "\\..\\..\\..\\src\\shaders\\shaders.vert.spv");
+	auto frag_shader = read_file(this->app_path + "\\..\\..\\..\\src\\shaders\\shaders.frag.spv");
 
 	if (vert_shader.empty() || frag_shader.empty())
 	{
@@ -889,7 +889,7 @@ bool VulkanApp::create_graphics_pipeline()
 
 bool VulkanApp::create_vertex_buffer()
 {
-	get_circle_model(30, &this->circle);
+	get_circle_model(20, &this->circle);
 	const VkDeviceSize buffer_size = sizeof(Vertex) * this->circle.vertices.size();
 
 	VkBuffer staging_buffer;
