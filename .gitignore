@@ -36,3 +36,8 @@
 *.ipch
 *.enc
 /build/Visual Studio 2019/vulkan-learn-1/x64/Debug/vulkan-learn-1.tlog/unsuccessfulbuild
+*.tlog
+*.ipdb
+*.db
+*.user
+*.iobj
