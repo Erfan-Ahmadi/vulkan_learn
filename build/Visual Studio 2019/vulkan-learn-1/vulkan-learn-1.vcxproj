@@ -19,15 +19,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\..\circle_collision\src\Renderer\renderer_helper.cpp" />
     <ClCompile Include="..\..\..\src\vulkan_learn_1\main.cpp" />
+    <ClCompile Include="..\..\..\src\vulkan_learn_1\renderer_helper.cpp" />
     <ClCompile Include="..\..\..\src\vulkan_learn_1\vulkan_app.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\..\circle_collision\src\Renderer\renderer_helper.h" />
-    <ClInclude Include="..\..\..\..\..\circle_collision\src\Renderer\vulkan_initializers.hpp" />
     <ClInclude Include="..\..\..\src\vulkan_learn_1\common.hpp" />
+    <ClInclude Include="..\..\..\src\vulkan_learn_1\renderer_helper.h" />
     <ClInclude Include="..\..\..\src\vulkan_learn_1\vulkan_app.h" />
+    <ClInclude Include="..\..\..\src\vulkan_learn_1\vulkan_initializers.hpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\..\src\shaders\shaders.frag">
@@ -36,9 +36,41 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).frag.spv</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)/../../src/shaders/%(Filename).frag.spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).frag.spv</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)/../../src/shaders/%(Filename).frag.spv</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SPIR-V GLSL bytecode generation</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SPIR-V GLSL bytecode generation</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SPIR-V GLSL bytecode generation</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SPIR-V GLSL bytecode generation</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)/../../src/shaders/%(Filename).frag.spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)/../../src/shaders/%(Filename).frag.spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).frag.spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).frag.spv</Command>
     </CustomBuild>
     <CustomBuild Include="..\..\..\src\shaders\shaders.vert">
       <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).vert.spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SPIR-V GLSL bytecode generation</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)/../../src/shaders/%(Filename).vert.spv</Outputs>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BuildInParallel>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).vert.spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SPIR-V GLSL bytecode generation</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)/../../src/shaders/%(Filename).vert.spv</Outputs>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BuildInParallel>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).vert.spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SPIR-V GLSL bytecode generation</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)/../../src/shaders/%(Filename).vert.spv</Outputs>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.1 -o "$(SolutionDir)"\..\..\src\shaders\%(Filename).vert.spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SPIR-V GLSL bytecode generation</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)/../../src/shaders/%(Filename).vert.spv</Outputs>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath);%(Filename);$(SolutionDir)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath);%(Filename);$(SolutionDir)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(FullPath);%(Filename);$(SolutionDir)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(FullPath);%(Filename);$(SolutionDir)</AdditionalInputs>
     </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
