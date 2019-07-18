@@ -21,9 +21,21 @@
     <ClCompile Include="..\..\..\src\vulkan_learn_1\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\circle_collision\src\Renderer\renderer_helper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\vulkan_learn_1\vulkan_app.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\vulkan_learn_1\common.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\circle_collision\src\Renderer\renderer_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\circle_collision\src\Renderer\vulkan_initializers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

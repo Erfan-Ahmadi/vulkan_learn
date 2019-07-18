@@ -19,15 +19,27 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\..\circle_collision\src\Renderer\renderer_helper.cpp" />
     <ClCompile Include="..\..\..\src\vulkan_learn_1\main.cpp" />
     <ClCompile Include="..\..\..\src\vulkan_learn_1\vulkan_app.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\..\circle_collision\src\Renderer\renderer_helper.h" />
+    <ClInclude Include="..\..\..\..\..\circle_collision\src\Renderer\vulkan_initializers.hpp" />
+    <ClInclude Include="..\..\..\src\vulkan_learn_1\common.hpp" />
     <ClInclude Include="..\..\..\src\vulkan_learn_1\vulkan_app.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\src\shaders\shaders.frag" />
-    <None Include="..\..\..\src\shaders\shaders.vert" />
+    <CustomBuild Include="..\..\..\src\shaders\shaders.frag">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="..\..\..\src\shaders\shaders.vert">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
